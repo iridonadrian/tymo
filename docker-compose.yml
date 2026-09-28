@@ -1,0 +1,44 @@
+# Tymo — self-hosted.  Start:  docker compose up -d   →  http://127.0.0.1:3210
+services:
+  tymo:
+    build: .
+    image: tymo:latest
+    restart: unless-stopped
+    ports:
+      # Published on localhost only. To expose on your network/internet, change this,
+      # set TYMO_PASSWORD, remove TYMO_ALLOW_NO_AUTH, and put HTTPS in front (Caddy, Traefik…).
+      - "127.0.0.1:3210:3210"
+    environment:
+      TYMO_PASSWORD: ${TYMO_PASSWORD:-}
+      TYMO_ALLOW_NO_AUTH: ${TYMO_ALLOW_NO_AUTH:-1}
+      TYMO_ALLOWED_HOSTS: ${TYMO_ALLOWED_HOSTS:-}
+      TYMO_TRUST_PROXY: ${TYMO_TRUST_PROXY:-}
+      TYMO_PUBLIC_URL: ${TYMO_PUBLIC_URL:-}
+      TYMO_SECURE_COOKIES: ${TYMO_SECURE_COOKIES:-}
+      # Optional AI (see .env.example)
+      TYMO_AI_PROVIDER: ${TYMO_AI_PROVIDER:-}
+      TYMO_AI_BASE_URL: ${TYMO_AI_BASE_URL:-}
+      TYMO_AI_MODEL: ${TYMO_AI_MODEL:-}
+      TYMO_AI_API_KEY: ${TYMO_AI_API_KEY:-}
+      TYMO_AI_AUTO_SUGGEST: ${TYMO_AI_AUTO_SUGGEST:-}
+      TYMO_AI_SEMANTIC: ${TYMO_AI_SEMANTIC:-}
+      TYMO_AI_EMBEDDING_MODEL: ${TYMO_AI_EMBEDDING_MODEL:-}
+      TYMO_AI_EMBEDDING_BASE_URL: ${TYMO_AI_EMBEDDING_BASE_URL:-}
+      TYMO_AI_OCR: ${TYMO_AI_OCR:-}
+      TYMO_AUTO_ARCHIVE: ${TYMO_AUTO_ARCHIVE:-}
+      TYMO_AUTO_BACKUP: ${TYMO_AUTO_BACKUP:-}
+      TYMO_LINK_CHECK: ${TYMO_LINK_CHECK:-}
+    # Lets the container reach Ollama running on the host (http://host.docker.internal:11434/v1).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - tymo-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  tymo-data:

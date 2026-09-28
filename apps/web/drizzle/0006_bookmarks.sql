@@ -1,0 +1,1 @@
+ALTER TABLE `saves` ADD `is_bookmark` integer DEFAULT false NOT NULL;

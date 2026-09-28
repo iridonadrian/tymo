@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tymo extension settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="options">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px">
+        <img src="icons/48.png" width="28" height="28" alt="" />
+        <div>
+          <div style="font-weight: 600; font-size: 16px">Tymo</div>
+          <div class="eyebrow">Extension settings</div>
+        </div>
+      </div>
+      <form id="form" class="card">
+        <div class="field">
+          <label class="eyebrow" for="server">Server URL</label>
+          <input id="server" placeholder="http://127.0.0.1:3210" required />
+        </div>
+        <div class="field">
+          <label class="eyebrow" for="token">API token</label>
+          <input id="token" type="password" placeholder="tymo_…" autocomplete="off" required />
+          <span class="hint"
+            >Create one in Tymo → Settings → Browser extension. Stored only in this browser's local
+            extension storage.</span
+          >
+        </div>
+        <div class="field">
+          <label class="eyebrow" for="default-collection"
+            >Default collection for instant saves (Alt+Shift+D)</label
+          >
+          <select id="default-collection">
+            <option value="">Inbox</option>
+          </select>
+        </div>
+        <div id="status" class="status hidden" role="status"></div>
+        <div class="actions">
+          <span class="hint">Tymo asks permission for this one site only.</span>
+          <button class="btn primary" type="submit">Save &amp; test connection</button>
+        </div>
+      </form>
+      <div class="card" style="margin-top: 16px">
+        <div class="eyebrow">Shortcuts</div>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 6px; color: var(--fg-2)">
+          <span>Open quick save</span><span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></span>
+          <span>Save current tab instantly</span
+          ><span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd></span>
+          <span>Save window as session</span
+          ><span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></span>
+        </div>
+        <span class="hint"
+          >Change them at chrome://extensions/shortcuts or about:addons → ⚙ → Manage Extension
+          Shortcuts.</span
+        >
+      </div>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

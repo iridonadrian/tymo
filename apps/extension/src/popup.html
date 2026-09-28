@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Tymo</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="popup">
+    <header>
+      <img src="icons/32.png" width="18" height="18" alt="" />
+      <span class="name">Tymo</span>
+      <button
+        class="btn ghost"
+        id="open-app"
+        title="Open Tymo"
+        style="height: 26px; padding: 0 8px"
+      >
+        Open app ↗
+      </button>
+      <button
+        class="btn ghost"
+        id="open-options"
+        title="Settings"
+        aria-label="Settings"
+        style="height: 26px; padding: 0 8px"
+      >
+        ⚙
+      </button>
+    </header>
+
+    <div id="not-configured" class="panel hidden">
+      <div class="center">
+        <div class="big">Connect Tymo</div>
+        <p style="color: var(--fg-2)">
+          Point the extension at your Tymo server and paste an API token from Settings → Browser
+          extension.
+        </p>
+        <button class="btn primary" id="configure">Open settings</button>
+      </div>
+    </div>
+
+    <main id="app" class="hidden">
+      <nav class="tabs" role="tablist" aria-label="Mode">
+        <button role="tab" id="tab-save" aria-selected="true" aria-controls="panel-save">
+          Save
+        </button>
+        <button role="tab" id="tab-session" aria-selected="false" aria-controls="panel-session">
+          Session
+        </button>
+        <button role="tab" id="tab-restore" aria-selected="false" aria-controls="panel-restore">
+          Restore
+        </button>
+        <button role="tab" id="tab-find" aria-selected="false" aria-controls="panel-find">
+          Find
+        </button>
+      </nav>
+
+      <form id="panel-save" class="panel" role="tabpanel" aria-labelledby="tab-save">
+        <div class="preview">
+          <img id="fav" alt="" />
+          <div class="meta">
+            <input id="title" class="title-input" aria-label="Title" />
+            <div class="url" id="url"></div>
+          </div>
+        </div>
+        <div class="row">
+          <select id="collection" aria-label="Collection">
+            <option value="">Inbox</option>
+          </select>
+          <input id="tags" placeholder="tags, comma separated" aria-label="Tags" list="tag-list" />
+          <datalist id="tag-list"></datalist>
+        </div>
+        <textarea id="note" placeholder="Note (optional)" aria-label="Note" rows="2"></textarea>
+        <label class="check"
+          ><input type="checkbox" id="as-bookmark" /> Add to Bookmarks (sites I come back to)</label
+        >
+        <label class="check"
+          ><input type="checkbox" id="archive-copy" /> Keep an offline copy of this page</label
+        >
+        <div id="save-status" class="status hidden" role="status"></div>
+        <div class="actions">
+          <button
+            type="button"
+            class="btn ghost"
+            id="screenshot"
+            title="Save a screenshot of the visible area"
+          >
+            📷 Screenshot
+          </button>
+          <span class="hint"><kbd>⌘</kbd><kbd>↵</kbd></span>
+          <button type="submit" class="btn primary" id="save">Save</button>
+        </div>
+      </form>
+
+      <form id="panel-session" class="panel hidden" role="tabpanel" aria-labelledby="tab-session">
+        <div class="center" style="padding: 8px 0 4px">
+          <div class="big" id="tab-count">–</div>
+          <div class="eyebrow" id="tab-count-label">tabs in this window</div>
+        </div>
+        <label class="check"><input type="checkbox" id="all-windows" /> Include all windows</label>
+        <input id="session-name" aria-label="Session name" />
+        <input
+          id="session-tags"
+          placeholder="tags for every tab (optional)"
+          aria-label="Session tags"
+        />
+        <div id="session-status" class="status hidden" role="status"></div>
+        <button type="submit" class="btn primary" id="save-session">Save session</button>
+        <button
+          type="button"
+          class="btn ghost"
+          id="save-bookmarks"
+          title="Put every tab on your Bookmarks page (tab groups become folders)"
+        >
+          🔖 Save tabs as bookmarks
+        </button>
+        <div id="after-session" class="hidden" style="display: grid; gap: 8px">
+          <label class="check"
+            ><input type="checkbox" id="keep-pinned" checked /> Keep pinned tabs open</label
+          >
+          <button type="button" class="btn primary" id="close-tabs">Close saved tabs</button>
+          <button type="button" class="btn ghost" id="view-session">Open in Tymo ↗</button>
+        </div>
+      </form>
+
+      <section
+        id="panel-restore"
+        class="panel hidden"
+        role="tabpanel"
+        aria-labelledby="tab-restore"
+      >
+        <div class="list" id="sessions"></div>
+      </section>
+
+      <section id="panel-find" class="panel hidden" role="tabpanel" aria-labelledby="tab-find">
+        <input
+          id="find-q"
+          type="search"
+          placeholder="Search your library… (tag:x domain:y is:fav)"
+          aria-label="Search your library"
+          autocomplete="off"
+        />
+        <div class="list" id="find-results" role="listbox" aria-label="Results"></div>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

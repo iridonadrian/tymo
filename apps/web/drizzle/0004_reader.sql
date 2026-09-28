@@ -1,0 +1,1 @@
+ALTER TABLE `saves` ADD `reader` text;

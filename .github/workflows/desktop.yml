@@ -1,0 +1,101 @@
+name: Desktop apps
+
+# Builds Tymo.dmg (macOS), Tymo Setup.exe (Windows) and an AppImage (Linux) on GitHub's
+# machines. Push a tag like v0.2.0, or run it from the Actions tab: with a tag, the files
+# are attached to a GitHub Release; without one, they are kept as workflow artifacts.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create (e.g. v0.2.0). Leave empty to only build."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, name: mac-apple-silicon }
+          - { os: macos-15-intel, name: mac-intel }
+          - { os: windows-latest, name: windows }
+          - { os: ubuntu-latest, name: linux }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      # Unsigned builds: macOS gets an ad-hoc signature, Windows none.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+      - run: npm ci
+      - run: npm run build -w @tymo/web
+      - run: npm ci
+        working-directory: desktop
+      - name: Version from tag
+        shell: bash
+        working-directory: desktop
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+            # Where the app looks for updates: this repository, set at build time.
+            npm pkg set "tymo.releases=${{ github.repository }}"
+          fi
+      - run: npm run dist
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tymo-${{ matrix.name }}
+          path: |
+            desktop/dist/*.dmg
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.ref_type == 'tag' || github.event.inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Tymo ${{ github.event.inputs.tag || github.ref_name }}
+          files: out/*
+          body: |
+            **Download for your computer:**
+
+            - **Mac with Apple chip (M1–M4):** `Tymo-…-mac-arm64.dmg`
+            - **Mac with Intel chip:** `Tymo-…-mac-x64.dmg`
+            - **Windows:** `Tymo-…-win-x64.exe`
+            - **Linux:** `Tymo-…-linux-x86_64.AppImage`
+
+            These builds aren't signed yet, so the first time you open Tymo:
+
+            - **Mac:** open the .dmg and drag Tymo to Applications. Open it; when macOS says it
+              can't check the app, go to **System Settings → Privacy & Security**, scroll down
+              and click **Open Anyway**. You only do this once.
+            - **Windows:** if "Windows protected your PC" appears, click **More info → Run anyway**.
+
+            Your library is stored on your computer and backed up daily (to iCloud Drive on a
+            Mac when it's on). See the README for details.

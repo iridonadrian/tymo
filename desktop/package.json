@@ -1,0 +1,62 @@
+{
+  "name": "tymo-desktop",
+  "productName": "Tymo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tymo as a desktop app: save it, close it, find it later.",
+  "author": "Tymo contributors",
+  "license": "MIT",
+  "main": "main.cjs",
+  "scripts": {
+    "stage": "node scripts/stage.mjs",
+    "start": "npm run stage && electron .",
+    "dist": "npm run stage && electron-builder --publish never",
+    "test": "node --test update-logic.test.cjs"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.tymo.desktop",
+    "productName": "Tymo",
+    "copyright": "MIT License, Tymo contributors",
+    "artifactName": "Tymo-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "server-entry.cjs",
+      "updater.cjs",
+      "update-logic.cjs",
+      "loading.html",
+      "package.json"
+    ],
+    "afterPack": "scripts/after-pack.cjs",
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "Tymo"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office"
+    },
+    "publish": null
+  }
+}

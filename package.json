@@ -1,0 +1,43 @@
+{
+  "name": "tymo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Open-source digital memory for the internet. Save it. Close it. Find it later.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @tymo/web",
+    "build": "npm run build -w @tymo/web && npm run build -w @tymo/extension && npm run build -w @tymo/mcp",
+    "start": "npm run start -w @tymo/web",
+    "test": "vitest run",
+    "test:e2e": "npm run test:e2e -w @tymo/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "mac:install": "bash scripts/mac/install.sh",
+    "mac:uninstall": "bash scripts/mac/uninstall.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@next/eslint-plugin-next": "^16.3.6",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.50.0",
+    "vitest": "^5.0.2"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    }
+  }
+}

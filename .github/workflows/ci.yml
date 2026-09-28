@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: node --test desktop/update-logic.test.cjs
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t tymo:ci .
+      - name: Smoke test container
+        run: |
+          docker run -d --name tymo -p 127.0.0.1:3210:3210 -e TYMO_PASSWORD=ci-smoke-test-passphrase tymo:ci
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3210/api/health && break; sleep 1; done
+          curl -sf http://127.0.0.1:3210/api/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3210/)" = "307"
+          docker run --rm tymo:ci node entrypoint.mjs && exit 1 || echo "refused unauthenticated bind as expected"
+          docker run --rm -e TYMO_PASSWORD=short tymo:ci node entrypoint.mjs && exit 1 || echo "refused weak password as expected"

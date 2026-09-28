@@ -1,0 +1,7 @@
+node_modules
+.next
+dist
+apps/web/drizzle
+package-lock.json
+.claude/settings.local.json
+desktop/server

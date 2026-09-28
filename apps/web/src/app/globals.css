@@ -1,0 +1,523 @@
+@import "tailwindcss";
+
+@theme {
+  /*
+   * Dark palette after Linear's "midnight precision instrument": layered near-black surfaces
+   * (void → carbon → obsidian → slate), hairline graphite/smoke borders instead of shadows,
+   * and a paper → mist → fog grey text scale. One chromatic accent.
+   */
+  /* Canvas (sidebar) → panel (the inset content area) → cards inside it. */
+  --color-bg: #08090a;
+  --color-panel: #0f1011;
+  --color-surface: #141517;
+  --color-surface-2: #1a1b1e;
+  --color-surface-3: #23252a;
+  --color-border: #23252a;
+  --color-border-strong: #383b3f;
+  /* Accent: user-selectable in Settings (lib/accent.ts renders the chosen value); mono default. */
+  --color-accent: #e5e5e6;
+  --color-accent-soft: rgb(229 229 230 / 0.08);
+  /* Accent-coloured text; differs from the fill only where the fill wouldn't be readable. */
+  --color-accent-ink: #e5e5e6;
+  /* The code field keeps its blue "cypher" glow; used for ambient light only, never actions. */
+  --color-glow: #6798ff;
+  --color-glow-soft: rgb(103 152 255 / 0.14);
+  --color-fg: #f7f8f8;
+  --color-fg-2: #b4bac4;
+  --color-muted: #8a8f98;
+  --color-danger: #eb5757;
+  --color-success: #27a644;
+  --color-warn: #f2c14e;
+  --color-accent-hover: #ffffff;
+  --color-on-accent: #08090a;
+  /* Top-edge highlight that makes cards read as machined frames. */
+  --color-card-highlight: rgb(255 255 255 / 0.045);
+  --color-danger-soft: #2a1414;
+  --color-danger-soft-hover: #3a1a1a;
+  --color-danger-line: #5a2a2a;
+  --color-grid-line: rgb(255 255 255 / 0.028);
+  /* Elevation lives in hairlines: inset highlight + 1px dark ring + a soft drop. */
+  --color-elevated-ring: rgb(0 0 0 / 0.6);
+  --color-elevated-highlight: rgb(255 255 255 / 0.04);
+  --shadow-elevated:
+    inset 0 0 0 1px rgb(255 255 255 / 0.03), inset 0 1px 0 0 var(--color-elevated-highlight),
+    0 0 0 1px var(--color-elevated-ring), 0 8px 32px 0 rgb(0 0 0 / 0.45);
+  --shadow-button:
+    0 1px 1px 0 rgb(0 0 0 / 0.07), 0 3px 2px 0 rgb(0 0 0 / 0.04),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.18);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-serif: "Iowan Old Style", "Charter", "Source Serif 4", Georgia, ui-serif, serif;
+  /* Linear's weight band: never bold. "medium" = 510, "semibold" = 590. */
+  --font-weight-medium: 510;
+  --font-weight-semibold: 590;
+  --tracking-tight: -0.022em;
+  --tracking-snug: -0.012em;
+  /* Radius vocabulary: 6px controls, 12px cards (rounded-xl), pills (rounded-full). */
+  --radius-lg: 6px;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+}
+
+/*
+ * Light theme. Applies when the user picks "Light", or picks "System" (no data-theme) and
+ * the OS prefers light. Only the tokens change; components never hardcode colours.
+ */
+@layer base {
+  :root[data-theme="light"] {
+    --color-bg: #f1f1f3;
+    --color-panel: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-2: #f1f1f3;
+    --color-surface-3: #e8e8eb;
+    --color-border: #e2e2e6;
+    --color-border-strong: #cfcfd5;
+    --color-accent: #1c1d1f;
+    --color-accent-soft: rgb(0 0 0 / 0.05);
+    --color-accent-hover: #34363a;
+    --color-on-accent: #ffffff;
+    --color-accent-ink: #1c1d1f;
+    --color-glow: #2f63d8;
+    --color-glow-soft: rgb(47 99 216 / 0.1);
+    --color-card-highlight: rgb(255 255 255 / 0.9);
+    --color-fg: #0b0b0c;
+    --color-fg-2: #4d4d55;
+    --color-muted: #6f6f78;
+    --color-danger: #c62f2f;
+    --color-success: #16874a;
+    --color-warn: #a86b00;
+    --color-danger-soft: #fdeeee;
+    --color-danger-soft-hover: #fbe0e0;
+    --color-danger-line: #f1c4c4;
+    --color-grid-line: rgb(0 0 0 / 0.045);
+    --color-elevated-ring: rgb(0 0 0 / 0.08);
+    --color-elevated-highlight: rgb(255 255 255 / 0.6);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+      --color-bg: #f1f1f3;
+      --color-panel: #ffffff;
+      --color-surface: #ffffff;
+      --color-surface-2: #f1f1f3;
+      --color-surface-3: #e8e8eb;
+      --color-border: #e2e2e6;
+      --color-border-strong: #cfcfd5;
+      --color-accent: #1c1d1f;
+      --color-accent-soft: rgb(0 0 0 / 0.05);
+      --color-accent-hover: #34363a;
+      --color-on-accent: #ffffff;
+      --color-accent-ink: #1c1d1f;
+      --color-glow: #2f63d8;
+      --color-glow-soft: rgb(47 99 216 / 0.1);
+      --color-card-highlight: rgb(255 255 255 / 0.9);
+      --color-fg: #0b0b0c;
+      --color-fg-2: #4d4d55;
+      --color-muted: #6f6f78;
+      --color-danger: #c62f2f;
+      --color-success: #16874a;
+      --color-warn: #a86b00;
+      --color-danger-soft: #fdeeee;
+      --color-danger-soft-hover: #fbe0e0;
+      --color-danger-line: #f1c4c4;
+      --color-grid-line: rgb(0 0 0 / 0.045);
+      --color-elevated-ring: rgb(0 0 0 / 0.08);
+      --color-elevated-highlight: rgb(255 255 255 / 0.6);
+      color-scheme: light;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+  body {
+    font-family: var(--font-sans);
+    /* Linear's Inter alternates: single-storey a (cv01), open digits (ss03), slashed zero. */
+    font-feature-settings: "cv01", "ss03", "zero";
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-glow-soft);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent-ink);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+@layer components {
+  /* Section eyebrow: small mono uppercase label. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  /* Framed card: carbon surface, hairline border, a faint highlight on the top edge. */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 0 var(--color-card-highlight);
+  }
+  /* Code field edge fade: left/right and bottom, intersected so corners fade too. */
+  .code-field-mask {
+    mask-image:
+      linear-gradient(to right, transparent, black 12%, black 88%, transparent),
+      linear-gradient(to bottom, black 45%, transparent);
+    mask-composite: intersect;
+  }
+  /* Blueprint grid: extremely subtle, used on headers and empty states only. */
+  .bg-blueprint {
+    background-image:
+      linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: -1px -1px;
+    mask-image: linear-gradient(to bottom, black 40%, transparent);
+  }
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    padding: 3px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-2);
+    color: var(--color-fg-2);
+  }
+  .input {
+    width: 100%;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 0.875rem;
+    color: var(--color-fg);
+    transition:
+      border-color 120ms,
+      box-shadow 120ms;
+  }
+  .input::placeholder {
+    color: var(--color-muted);
+  }
+  .input:hover {
+    border-color: var(--color-border-strong);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+}
+
+/* Reader view: long-form typography for saved articles, posts and notes. */
+@layer components {
+  .reader {
+    --reader-size: 17px;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px 24px 96px;
+    font-size: var(--reader-size);
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--color-fg) 82%, var(--color-fg-2));
+    overflow-wrap: break-word;
+  }
+  .reader[data-size="s"] {
+    --reader-size: 15px;
+  }
+  .reader[data-size="l"] {
+    --reader-size: 19.5px;
+  }
+  .reader[data-font="serif"] :is(.reader-body, .reader-lede, .reader-head h1) {
+    font-family: var(--font-serif);
+  }
+  .reader[data-font="serif"] .reader-body {
+    font-size: 1.06em;
+  }
+  .reader-head h1 {
+    margin-top: 14px;
+    font-size: 1.95em;
+    line-height: 1.2;
+    font-weight: 590;
+    letter-spacing: -0.02em;
+    color: var(--color-fg);
+    text-wrap: balance;
+  }
+  .reader-head h1.reader-post-title {
+    font-size: 1.2em;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+  .reader-lede {
+    margin-top: 12px;
+    font-size: 1.12em;
+    line-height: 1.55;
+    color: var(--color-fg-2);
+    text-wrap: pretty;
+  }
+  .reader-byline {
+    margin-top: 14px;
+    font-size: 0.8em;
+    color: var(--color-muted);
+  }
+  .reader-notes {
+    margin-top: 28px;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    font-size: 0.88em;
+    line-height: 1.6;
+    white-space: pre-line;
+  }
+  .reader-body {
+    margin-top: 32px;
+  }
+  .reader-body > * + * {
+    margin-top: 1.15em;
+  }
+  .reader-body :is(p, li, blockquote) {
+    white-space: pre-line;
+    text-wrap: pretty;
+  }
+  .reader-body h2,
+  .reader-body h3,
+  .reader-body h4 {
+    color: var(--color-fg);
+    font-weight: 590;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .reader-body h2 {
+    margin-top: 2em;
+    font-size: 1.4em;
+  }
+  .reader-body h3 {
+    margin-top: 1.7em;
+    font-size: 1.17em;
+  }
+  .reader-body h4 {
+    margin-top: 1.5em;
+    font-size: 1em;
+  }
+  .reader-body :is(h2, h3, h4) + * {
+    margin-top: 0.6em;
+  }
+  .reader-body strong {
+    color: var(--color-fg);
+    font-weight: 590;
+  }
+  .reader-body a {
+    color: var(--color-accent-ink);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 120ms;
+  }
+  .reader-body a:hover {
+    text-decoration-color: currentColor;
+  }
+  .reader-body :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+    padding: 0.12em 0.36em;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    background: var(--color-surface-2);
+    color: var(--color-fg);
+  }
+  .reader-body pre {
+    padding: 14px 16px;
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--color-fg);
+    white-space: pre;
+  }
+  .reader-body ul,
+  .reader-body ol {
+    padding-left: 1.4em;
+  }
+  .reader-body ul {
+    list-style: disc;
+  }
+  .reader-body ol {
+    list-style: decimal;
+  }
+  .reader-body li + li {
+    margin-top: 0.4em;
+  }
+  .reader-body li::marker {
+    color: var(--color-muted);
+  }
+  .reader-body blockquote {
+    padding-left: 1em;
+    border-left: 2px solid var(--color-border-strong);
+    color: var(--color-fg-2);
+    font-style: italic;
+  }
+  .reader-body figure {
+    margin-top: 1.8em;
+    margin-bottom: 1.8em;
+  }
+  .reader-body img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 10px;
+    background: var(--color-surface-2);
+  }
+  .reader-body figcaption {
+    margin-top: 0.7em;
+    font-size: 0.78em;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--color-muted);
+  }
+  .reader-body hr {
+    width: 32%;
+    margin: 2.4em auto;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .reader-table {
+    overflow-x: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+  }
+  .reader-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84em;
+    line-height: 1.5;
+  }
+  .reader-table :is(th, td) {
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .reader-table tr:last-child td {
+    border-bottom: 0;
+  }
+  .reader-table th {
+    color: var(--color-fg);
+    font-weight: 590;
+    background: var(--color-surface);
+  }
+  /* Saved highlights: a soft marker stroke, readable in both themes. */
+  .reader-body mark {
+    background: color-mix(in srgb, var(--color-warn) 26%, transparent);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0.05em 0.1em;
+    box-decoration-break: clone;
+  }
+  .reader-highlights {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.9em;
+    line-height: 1.6;
+  }
+  .reader-highlights p {
+    padding-left: 12px;
+    border-left: 2px solid color-mix(in srgb, var(--color-warn) 60%, transparent);
+    white-space: pre-line;
+  }
+  /* Social posts: the caption is the content, set a little larger. */
+  .reader-post {
+    padding: 20px 22px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-surface);
+    font-size: 1.08em;
+    color: var(--color-fg);
+  }
+  .reader-post > * + * {
+    margin-top: 0.8em;
+  }
+  .reader-post figure {
+    margin: 1em 0 0;
+  }
+  @media (max-width: 640px) {
+    .reader {
+      padding: 28px 16px 72px;
+    }
+  }
+}
+
+/* Keyboard hints mean nothing on touch screens. */
+@media (pointer: coarse) {
+  .touch-hidden {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.animate-pop {
+  animation: pop-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.animate-slide {
+  animation: slide-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
