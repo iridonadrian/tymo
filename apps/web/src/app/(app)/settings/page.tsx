@@ -11,6 +11,7 @@ import { brokenCount, getLinkCheckSettings } from "@/server/linkcheck";
 import { authEnabled } from "@/server/auth";
 import { config } from "@/server/config";
 import { displayPath } from "@/server/privacy";
+import { syncStatus } from "@/server/sync";
 import { PageHeader } from "@/components/ui";
 import {
   AiSettingsForm,
@@ -25,6 +26,7 @@ import {
   AccentPicker,
   LogoutButton,
   McpConnector,
+  SyncPanel,
 } from "@/components/settings-client";
 import { listConnectedApps, publicOrigin } from "@/server/oauth";
 
@@ -72,6 +74,7 @@ export default async function SettingsPage() {
   const accent = parseAccent((await cookies()).get(ACCENT_COOKIE)?.value);
   const origin = publicOrigin(h);
   const apps = await listConnectedApps();
+  const sync = await syncStatus();
   return (
     <div className="max-w-3xl">
       <PageHeader eyebrow="Configuration" title="Settings" />
@@ -117,6 +120,19 @@ export default async function SettingsPage() {
           description="Your data is yours. Download everything, any time."
         >
           <ExportLinks />
+        </Card>
+        <Card
+          id="sync"
+          title="Sync"
+          description="Keep the same library on several computers (Mac, Windows, Linux) through a folder your cloud drive already syncs: iCloud Drive, Google Drive, OneDrive, Dropbox or Syncthing. Everything in it is encrypted with your passphrase; each computer keeps a full copy and works offline."
+        >
+          <SyncPanel
+            status={{
+              ...sync,
+              folder: sync.folder && displayPath(sync.folder),
+              defaultFolder: sync.defaultFolder && displayPath(sync.defaultFolder),
+            }}
+          />
         </Card>
         <Card
           id="backup"

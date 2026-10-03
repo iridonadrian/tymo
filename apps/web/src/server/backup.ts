@@ -88,6 +88,21 @@ async function scrubSecrets(dbFile: string) {
     await client.execute(
       "UPDATE settings SET value = json_set(value, '$.apiKey', '') WHERE key = 'ai' AND json_valid(value)",
     );
+    // Sync is per device: a restored copy must join again rather than pose as this one.
+    await client.execute("DELETE FROM settings WHERE key = 'sync'");
+    for (const t of [
+      "sync_outbox",
+      "sync_versions",
+      "sync_aliases",
+      "sync_pending",
+      "sync_cursors",
+    ])
+      await client.execute(`DELETE FROM ${t}`).catch(() => {});
+    const triggers = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'tymo_sync_%'",
+    );
+    for (const r of triggers.rows)
+      await client.execute(`DROP TRIGGER IF EXISTS "${String(r.name).replace(/"/g, "")}"`);
   } finally {
     client.close();
   }

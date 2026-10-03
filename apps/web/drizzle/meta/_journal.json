@@ -50,6 +50,13 @@
       "when": 1790467580920,
       "tag": "0006_bookmarks",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791040896857,
+      "tag": "0007_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -254,6 +254,61 @@ export const settings = sqliteTable("settings", {
   updatedAt: integer("updated_at").notNull().default(now),
 });
 
+/* ---------------------------------------------------------------- sync (see server/sync) */
+
+/** Local changes waiting to be written to the sync folder; filled by triggers. */
+export const syncOutbox = sqliteTable("sync_outbox", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tbl: text("tbl").notNull(),
+  pk: text("pk").notNull(),
+  op: text("op", { enum: ["i", "u", "d", "s"] }).notNull(),
+  /** Changed columns (JSON array, nulls for unchanged) for updates. */
+  cols: text("cols"),
+  at: integer("at").notNull().default(now),
+});
+
+/** Last-writer-wins clock per synced field; col "*" is a deletion. */
+export const syncVersions = sqliteTable(
+  "sync_versions",
+  {
+    tbl: text("tbl").notNull(),
+    pk: text("pk").notNull(),
+    col: text("col").notNull(),
+    ver: text("ver").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tbl, t.pk, t.col] })],
+);
+
+/** Rows merged into another on this device (same tag name, same link…): old id → kept id. */
+export const syncAliases = sqliteTable(
+  "sync_aliases",
+  {
+    tbl: text("tbl").notNull(),
+    fromId: text("from_id").notNull(),
+    toId: text("to_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.tbl, t.fromId] })],
+);
+
+/** Changes from other devices that can't be applied yet (their parent row hasn't arrived). */
+export const syncPending = sqliteTable("sync_pending", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  rec: text("rec").notNull(),
+  firstSeen: integer("first_seen").notNull().default(now),
+});
+
+/** How far each other device's change log has been applied. */
+export const syncCursors = sqliteTable("sync_cursors", {
+  device: text("device").primaryKey(),
+  seq: integer("seq").notNull(),
+});
+
+/** One row (id 1): muted while applying remote changes so triggers don't echo them. */
+export const syncState = sqliteTable("sync_state", {
+  id: integer("id").primaryKey(),
+  muted: integer("muted").notNull().default(0),
+});
+
 export type SaveRow = typeof saves.$inferSelect;
 export type CollectionRow = typeof collections.$inferSelect;
 export type SessionRow = typeof sessions.$inferSelect;

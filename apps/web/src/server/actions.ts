@@ -34,6 +34,7 @@ import { dismissDuplicate } from "./duplicates";
 import { enqueueOcr, ocrSave } from "./ocr";
 import { checkLink, checkLinksBatch, saveLinkCheckSettings } from "./linkcheck";
 import { backupSettingsSchema, saveBackupSettings, writeBackupFile } from "./backup";
+import { disableSync, enableSync, syncNow } from "./sync";
 import { archiveSave, archiveSettingsSchema, saveArchiveSettings } from "./archive";
 import { flushEmbeddings, pruneStaleEmbeddings, queueMissingEmbeddings } from "./embeddings";
 import { getDb, schema } from "./db";
@@ -579,6 +580,33 @@ export async function saveLinkCheckSettingsAction(input: unknown) {
 export async function saveBackupSettingsAction(input: unknown) {
   return run(async () => {
     await saveBackupSettings(backupSettingsSchema.partial().parse(input));
+    refresh();
+  });
+}
+
+/* ------------------------------------------------------------------ sync */
+
+export async function enableSyncAction(input: unknown) {
+  return run(async () => {
+    const data = z
+      .object({ folder: z.string().trim().min(1).max(1000), passphrase: z.string().max(500) })
+      .parse(input);
+    const r = await enableSync(data);
+    refresh();
+    return r;
+  });
+}
+
+export async function disableSyncAction() {
+  return run(async () => {
+    await disableSync();
+    refresh();
+  });
+}
+
+export async function syncNowAction() {
+  return run(async () => {
+    await syncNow();
     refresh();
   });
 }

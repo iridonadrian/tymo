@@ -202,6 +202,22 @@ resolve its own domain to `127.0.0.1` and then talk to Tymo same-origin: read `/
   the app and data folders `chmod 700`; the LaunchAgent runs as the logged-in user.
 - `.env*` files are git-ignored.
 
+### Folder sync (`server/sync/`)
+
+- The sync folder is assumed hostile-readable (a cloud drive). Everything except
+  `tymo-sync.json` (salt + a passphrase check value) is AES-256-GCM encrypted with a key
+  from scrypt(passphrase, per-library salt); the file kind is bound as AAD. Blob names are
+  HMACs, so they don't reveal file hashes.
+- Anyone who can _write_ to the folder but lacks the passphrase can only add files that
+  fail authentication and are ignored. With the passphrase, they can change the library:
+  treat it like the library itself.
+- Incoming records are validated (known tables, key shapes) and written with
+  parameterised SQL to known columns only; blobs are checked against their SHA-256 and
+  stored under fresh random names. Folder paths are restricted (absolute, outside the
+  data folder) and only file names matching fixed patterns are read.
+- The derived key is stored in this device's settings (like the AI key it never leaves
+  the machine) and backups drop it along with the device id and sync state.
+
 ### Desktop app (`desktop/`)
 
 - The server runs on `127.0.0.1` only; the window has `contextIsolation`, `sandbox`, no

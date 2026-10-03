@@ -116,12 +116,34 @@ npm start          # → http://127.0.0.1:3210
 Your library lives in `apps/web/data/`. In Chrome or Edge, use **Install Tymo** in the
 address bar to get an app window on Windows and Linux too.
 
+## Sync between computers
+
+Keep one library on your MacBook, Mac mini and Windows PC. Each computer keeps a full copy
+and works offline; changes travel through a folder your cloud drive already syncs (free):
+**iCloud Drive** (also on Windows with iCloud for Windows), **Google Drive**, **OneDrive**,
+**Dropbox** or **Syncthing** (direct, no cloud).
+
+1. On the first computer: **Settings → Sync**, keep the suggested iCloud Drive folder (or
+   pick another), choose a passphrase and **Turn on sync**.
+2. On each other computer: the same folder and the same passphrase. Its library is merged
+   in: the same link, tag or folder saved on both becomes one.
+
+- Everything in the sync folder is **encrypted with your passphrase** (AES-256); Apple,
+  Google or anyone else with the folder sees only noise. The passphrase can't be recovered.
+- Edits merge field by field: change the title on one Mac and the tags on the other, and
+  both stay. If both change the same thing, the newest edit wins. Deletes sync too.
+- Changes usually arrive within seconds (as fast as the cloud drive syncs).
+- **Lost a computer?** Install Tymo on the new one, join with the same folder and passphrase,
+  and the whole library (files included) is rebuilt from the folder.
+- Settings, API tokens, connected apps and AI keys stay per computer.
+
 ## Keep your data safe
 
 Your library is one database plus a folder of files, so keeping a copy is easy — and free.
 
 | What                                           | How                                                                                                                                                                                                                                        |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Sync**                                       | With [sync](#sync-between-computers) on, every computer has the full library and the sync folder holds an encrypted copy too.                                                                                                              |
 | **Automatic daily backups, off your computer** | The Mac app writes a full backup every day to **iCloud Drive → Tymo Backups** when iCloud Drive is on (5 GB free). Anywhere else, set `TYMO_BACKUP_DIR` to a Dropbox, Google Drive, OneDrive or external-disk folder. The last 7 are kept. |
 | **Time Machine**                               | Covers `~/Library/Application Support/Tymo` automatically if you use it.                                                                                                                                                                   |
 | **One-click backup file**                      | **Settings → Backup & restore → Download full backup**: one `.tar.gz` with everything (database, uploads, screenshots, archived pages). Restore it on any Tymo install, on any computer.                                                   |

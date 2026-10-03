@@ -18,6 +18,8 @@ export async function register() {
   setInterval(backup, 3600_000).unref?.();
   setInterval(linkCheck, 3600_000).unref?.();
   // Picks up saves whose metadata fetch (or embedding) was interrupted by a restart.
+  const { initSync } = await import("./server/sync");
+  setTimeout(() => void initSync().catch((err) => console.warn(`[sync] ${err}`)), 1000).unref?.();
   setTimeout(() => {
     void resumePendingEnrichment().catch(() => {});
     void queueMissingEmbeddings().catch(() => {});
