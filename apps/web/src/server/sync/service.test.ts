@@ -11,11 +11,11 @@ import { getDb, resetDbForTests, schema } from "../db";
 import { createSave, updateSave } from "../saves";
 import { createBackup } from "../backup";
 import { getSetting } from "../settings";
-import { deriveKey } from "./crypto";
+import { deriveKey, makeCheck, newSalt } from "./crypto";
 import { SyncEngine } from "./engine";
 import { SyncFolder } from "./folder";
 import { installTriggers } from "./triggers";
-import { disableSync, enableSync, syncNow, syncStatus } from ".";
+import { changePassphrase, disableSync, enableSync, syncNow, syncStatus } from ".";
 
 let folder: string;
 
@@ -129,5 +129,72 @@ describe("sync in the app", () => {
     expect(tar.includes(stored.key)).toBe(false);
     expect(tar.includes(stored.deviceId)).toBe(false);
     expect(tar.includes("tymo_sync_saves_i")).toBe(false);
+  });
+
+  it("changes the passphrase: the folder is re-encrypted and only the new one reads it", async () => {
+    await enableSync({ folder, passphrase: "first passphrase" });
+    const s1 = await createSave({ url: "https://example.org/a", title: "Kept across the change" });
+    await syncNow();
+    await expect(
+      changePassphrase({ current: "wrong one!", next: "second passphrase" }),
+    ).rejects.toThrow(/isn't right/);
+    await changePassphrase({ current: "first passphrase", next: "second passphrase" });
+    expect((await syncStatus()).lastError).toBeNull();
+
+    const stale = await otherComputer("first passphrase");
+    expect(await stale.engine.importChanges()).toEqual({ applied: 0, pending: 0 });
+    expect(await stale.db.all(sql`SELECT id FROM saves`)).toEqual([]);
+    stale.close();
+    const other = await otherComputer("second passphrase");
+    await other.engine.importChanges();
+    expect(await other.db.all(sql`SELECT id FROM saves`)).toEqual([{ id: s1.id }]);
+    other.close();
+  });
+
+  it("asks for the new passphrase when another computer changed it, then rejoins", async () => {
+    await enableSync({ folder, passphrase: "first passphrase" });
+    // Another computer re-keys the folder.
+    const salt = newSalt();
+    const key = await deriveKey("changed elsewhere", salt);
+    const sf = new SyncFolder(folder);
+    await sf.eraseData();
+    await sf.writeConfig({
+      app: "tymo",
+      format: 1,
+      salt: salt.toString("base64"),
+      check: makeCheck(key),
+      createdAt: Date.now(),
+    });
+    await syncNow();
+    expect(await syncStatus()).toMatchObject({ issue: "passphrase" });
+    await expect(enableSync({ folder, passphrase: "first passphrase" })).rejects.toThrow(
+      /doesn't match/,
+    );
+    await enableSync({ folder, passphrase: "changed elsewhere" });
+    expect(await syncStatus()).toMatchObject({ issue: null, lastError: null });
+  });
+
+  it("notices when the synced library was deleted from the folder", async () => {
+    await enableSync({ folder, passphrase: "first passphrase" });
+    await new SyncFolder(folder).eraseAll();
+    fs.mkdirSync(folder, { recursive: true });
+    await syncNow();
+    expect(await syncStatus()).toMatchObject({ issue: "gone" });
+  });
+
+  it("turns off in three ways, always keeping this computer's library", async () => {
+    const saved = await createSave({ url: "https://example.org/k", title: "Stays here" });
+    await enableSync({ folder, passphrase: "first passphrase" });
+    const device = (await getSetting<{ deviceId: string }>("sync"))!.deviceId;
+    await disableSync("remove");
+    expect(fs.existsSync(path.join(folder, "devices", device))).toBe(false);
+    expect(fs.existsSync(path.join(folder, "tymo-sync.json"))).toBe(true);
+
+    await enableSync({ folder, passphrase: "first passphrase" });
+    await disableSync("erase");
+    expect(fs.existsSync(path.join(folder, "tymo-sync.json"))).toBe(false);
+    expect(fs.existsSync(path.join(folder, "devices"))).toBe(false);
+    const db = await getDb();
+    expect(await db.all(sql`SELECT id FROM saves`)).toEqual([{ id: saved.id }]);
   });
 });

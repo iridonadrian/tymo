@@ -204,7 +204,11 @@ export class SyncEngine {
         try {
           file = JSON.parse(open(await folder.readLog(device, seq), this.o.key, "log").toString());
         } catch {
-          break; // still syncing, or damaged: try again next time
+          // Still arriving, or unreadable (damaged, or from before a passphrase change):
+          // try again next time, and give up on it after a while so the rest still syncs.
+          if (!this.gapExpired(device, seq)) break;
+          at = seq;
+          continue;
         }
         if (file.app === "tymo" && Array.isArray(file.records)) {
           for (const r of file.records) if (validRecord(r)) incoming.push(r);

@@ -19,6 +19,7 @@ import {
   testAiAction,
 } from "@/server/actions";
 import {
+  changeSyncPassphraseAction,
   disableSyncAction,
   disconnectAppAction,
   enableSyncAction,
@@ -981,17 +982,39 @@ export interface SyncPanelStatus {
   folder: string | null;
   defaultFolder: string | null;
   devices: number;
+  others: { lastChangeAt: number | null }[];
   lastSyncAt: number | null;
   lastError: string | null;
   waiting: number;
   queued: number;
+  issue: "passphrase" | "gone" | null;
 }
+
+type OffMode = "keep" | "remove" | "erase";
+
+const OFF_CHOICES: { mode: OffMode; title: string; detail: string }[] = [
+  {
+    mode: "keep",
+    title: "Just this computer",
+    detail: "Stop syncing here. Your other computers keep syncing with each other.",
+  },
+  {
+    mode: "remove",
+    title: "Remove this computer from sync",
+    detail:
+      "Also takes this computer's changes out of the sync folder. What the others already received stays with them.",
+  },
+  {
+    mode: "erase",
+    title: "Delete the synced library from the folder",
+    detail:
+      "Every computer stops syncing and keeps its own library. Use this to start over, or to stop using the cloud drive.",
+  },
+];
 
 /** Settings → Sync: one library on several computers through a shared, encrypted folder. */
 export function SyncPanel({ status }: { status: SyncPanelStatus }) {
-  const [folder, setFolder] = useState(status.folder ?? status.defaultFolder ?? "");
-  const [pass, setPass] = useState("");
-  const [again, setAgain] = useState("");
+  const [panel, setPanel] = useState<null | "passphrase" | "off">(null);
   const [pending, start] = useTransition();
   const router = useRouter();
   const { toast } = useApp();
@@ -1002,71 +1025,130 @@ export function SyncPanel({ status }: { status: SyncPanelStatus }) {
     return () => clearInterval(t);
   }, [status.enabled, router]);
 
-  if (status.enabled) {
+  if (!status.enabled) return <SyncSetupForm initialFolder={status.defaultFolder ?? ""} />;
+
+  if (status.issue === "passphrase")
     return (
       <div className="space-y-3 text-sm">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-flex items-center gap-1.5 text-fg">
-            <span
-              className={cn("size-2 rounded-full", status.lastError ? "bg-warn" : "bg-success")}
-              aria-hidden
-            />
-            {status.lastError ? "Sync paused" : "Sync is on"}
-          </span>
-          <span className="text-fg-2">
-            {status.devices} {status.devices === 1 ? "computer" : "computers"}
-          </span>
-          {status.lastSyncAt && (
-            <span className="text-fg-2">
-              last synced <Time ts={status.lastSyncAt} />
-            </span>
-          )}
-          {status.waiting > 0 && (
-            <span className="text-fg-2">{status.waiting} changes waiting for the cloud drive</span>
-          )}
-        </div>
-        {status.lastError && <p className="text-xs text-warn">{status.lastError}</p>}
-        <p className="font-mono text-xs break-all text-muted">{status.folder}</p>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                const res = await syncNowAction();
-                if (!res.ok) toast(res.error, { tone: "error" });
-                router.refresh();
-              })
-            }
-          >
-            {pending && <Loader2 size={12} className="animate-spin" />} Sync now
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={pending}
-            onClick={() => {
-              if (!confirm("Stop syncing this computer? Its library stays as it is.")) return;
-              start(async () => {
-                const res = await disableSyncAction();
-                if (!res.ok) toast(res.error, { tone: "error" });
-                router.refresh();
-              });
-            }}
-          >
-            Turn off
-          </Button>
-        </div>
+        <p className="text-warn">
+          The passphrase was changed on another computer. Enter the new passphrase to keep syncing;
+          this computer&rsquo;s library is kept and merged back in.
+        </p>
+        <SyncSetupForm initialFolder={status.folder ?? ""} rejoin />
+        <OffChooser pending={pending} start={start} />
       </div>
     );
-  }
 
+  if (status.issue === "gone")
+    return (
+      <div className="space-y-3 text-sm">
+        <p className="text-warn">
+          The synced library was removed from the sync folder (on another computer or in the cloud
+          drive). This computer&rsquo;s library is untouched.
+        </p>
+        <p className="text-xs text-fg-2">
+          Start a new synced library from this computer, or turn sync off.
+        </p>
+        <SyncSetupForm initialFolder={status.folder ?? ""} />
+        <OffChooser pending={pending} start={start} />
+      </div>
+    );
+
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="inline-flex items-center gap-1.5 text-fg">
+          <span
+            className={cn("size-2 rounded-full", status.lastError ? "bg-warn" : "bg-success")}
+            aria-hidden
+          />
+          {status.lastError ? "Sync paused" : "Sync is on"}
+        </span>
+        <span className="text-fg-2">
+          {status.others.length === 0
+            ? "Only this computer so far"
+            : `This computer and ${status.others.length} ${status.others.length === 1 ? "other" : "others"}`}
+          {status.others[0]?.lastChangeAt && (
+            <>
+              {" "}
+              (last change from another computer <Time ts={status.others[0].lastChangeAt} />)
+            </>
+          )}
+        </span>
+        {status.lastSyncAt && (
+          <span className="text-fg-2">
+            last synced <Time ts={status.lastSyncAt} />
+          </span>
+        )}
+        {status.waiting > 0 && (
+          <span className="text-fg-2">{status.waiting} changes waiting for the cloud drive</span>
+        )}
+      </div>
+      {status.lastError && <p className="text-xs text-warn">{status.lastError}</p>}
+      {status.others.length === 0 && !status.lastError && (
+        <p className="text-xs text-muted">
+          Other computers appear here once the cloud drive has delivered their changes, which can
+          take a few minutes with iCloud Drive.
+        </p>
+      )}
+      <p className="font-mono text-xs break-all text-muted">{status.folder}</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              const res = await syncNowAction();
+              if (!res.ok) toast(res.error, { tone: "error" });
+              router.refresh();
+            })
+          }
+        >
+          {pending && <Loader2 size={12} className="animate-spin" />} Sync now
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-expanded={panel === "passphrase"}
+          onClick={() => setPanel(panel === "passphrase" ? null : "passphrase")}
+        >
+          Change passphrase
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-expanded={panel === "off"}
+          onClick={() => setPanel(panel === "off" ? null : "off")}
+        >
+          Turn off…
+        </Button>
+      </div>
+      {panel === "passphrase" && <ChangePassphraseForm onDone={() => setPanel(null)} />}
+      {panel === "off" && <OffChooser pending={pending} start={start} open />}
+    </div>
+  );
+}
+
+function SyncSetupForm({
+  initialFolder,
+  rejoin = false,
+}: {
+  initialFolder: string;
+  rejoin?: boolean;
+}) {
+  const [folder, setFolder] = useState(initialFolder);
+  const [pass, setPass] = useState("");
+  const [again, setAgain] = useState("");
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useApp();
   return (
     <form
       className="space-y-3 text-sm"
       onSubmit={(e) => {
         e.preventDefault();
-        if (pass !== again) return toast("The passphrases don't match", { tone: "error" });
+        if (!rejoin && pass !== again)
+          return toast("The passphrases don't match", { tone: "error" });
         start(async () => {
           const res = await enableSyncAction({ folder, passphrase: pass });
           if (!res.ok) return toast(res.error, { tone: "error" });
@@ -1082,50 +1164,191 @@ export function SyncPanel({ status }: { status: SyncPanelStatus }) {
         });
       }}
     >
-      <label className="block space-y-1">
-        <span className="text-xs text-fg-2">Sync folder</span>
-        <input
-          className="input h-8 font-mono text-xs"
-          value={folder}
-          onChange={(e) => setFolder(e.target.value)}
-          placeholder="~/Library/Mobile Documents/com~apple~CloudDocs/Tymo Sync"
-          required
-          spellCheck={false}
-        />
-      </label>
+      {!rejoin && (
+        <label className="block space-y-1">
+          <span className="text-xs text-fg-2">Sync folder</span>
+          <input
+            className="input h-8 font-mono text-xs"
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            placeholder="~/Library/Mobile Documents/com~apple~CloudDocs/Tymo Sync"
+            required
+            spellCheck={false}
+          />
+        </label>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block space-y-1">
-          <span className="text-xs text-fg-2">Passphrase</span>
+          <span className="text-xs text-fg-2">{rejoin ? "New passphrase" : "Passphrase"}</span>
           <input
             className="input h-8"
             type="password"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
             minLength={8}
-            autoComplete="new-password"
+            autoComplete={rejoin ? "current-password" : "new-password"}
             required
           />
         </label>
-        <label className="block space-y-1">
-          <span className="text-xs text-fg-2">Passphrase again</span>
-          <input
-            className="input h-8"
-            type="password"
-            value={again}
-            onChange={(e) => setAgain(e.target.value)}
-            minLength={8}
-            autoComplete="new-password"
-            required
-          />
-        </label>
+        {!rejoin && (
+          <label className="block space-y-1">
+            <span className="text-xs text-fg-2">Passphrase again</span>
+            <input
+              className="input h-8"
+              type="password"
+              value={again}
+              onChange={(e) => setAgain(e.target.value)}
+              minLength={8}
+              autoComplete="new-password"
+              required
+            />
+          </label>
+        )}
       </div>
-      <p className="text-xs text-muted">
-        Use the same folder and passphrase on every computer. The passphrase encrypts everything in
-        the folder and can&rsquo;t be recovered, so keep it somewhere safe.
-      </p>
+      {!rejoin && (
+        <p className="text-xs text-muted">
+          Use the same folder and passphrase on every computer. The passphrase encrypts everything
+          in the folder and can&rsquo;t be recovered, so keep it somewhere safe. On a second
+          computer, wait until the folder shows up in your cloud drive before turning sync on, so it
+          joins instead of starting its own library.
+        </p>
+      )}
       <Button size="sm" type="submit" disabled={pending}>
-        {pending && <Loader2 size={12} className="animate-spin" />} Turn on sync
+        {pending && <Loader2 size={12} className="animate-spin" />}{" "}
+        {rejoin ? "Continue syncing" : "Turn on sync"}
       </Button>
     </form>
+  );
+}
+
+function ChangePassphraseForm({ onDone }: { onDone: () => void }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const { toast } = useApp();
+  return (
+    <form
+      className="space-y-3 rounded-lg border border-border p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (next !== again) return toast("The new passphrases don't match", { tone: "error" });
+        start(async () => {
+          const res = await changeSyncPassphraseAction({ current, next });
+          if (!res.ok) return toast(res.error, { tone: "error" });
+          toast(
+            "Passphrase changed. On your other computers, enter the new one in Settings → Sync.",
+            {
+              tone: "success",
+            },
+          );
+          onDone();
+          router.refresh();
+        });
+      }}
+    >
+      <p className="text-xs text-fg-2">
+        The synced library is re-encrypted from this computer. Your other computers will ask for the
+        new passphrase and then send their changes again, so nothing is lost.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {(
+          [
+            ["Current passphrase", current, setCurrent, "current-password"],
+            ["New passphrase", next, setNext, "new-password"],
+            ["New passphrase again", again, setAgain, "new-password"],
+          ] as const
+        ).map(([label, value, set, ac]) => (
+          <label key={label} className="block space-y-1">
+            <span className="text-xs text-fg-2">{label}</span>
+            <input
+              className="input h-8"
+              type="password"
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              minLength={label === "Current passphrase" ? 1 : 8}
+              autoComplete={ac}
+              required
+            />
+          </label>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={pending}>
+          {pending && <Loader2 size={12} className="animate-spin" />} Change passphrase
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function OffChooser({
+  pending,
+  start,
+  open = false,
+}: {
+  pending: boolean;
+  start: (fn: () => Promise<void>) => void;
+  open?: boolean;
+}) {
+  const [shown, setShown] = useState(open);
+  const [mode, setMode] = useState<OffMode>("keep");
+  const router = useRouter();
+  const { toast } = useApp();
+  if (!shown)
+    return (
+      <Button size="sm" variant="ghost" onClick={() => setShown(true)}>
+        Turn off…
+      </Button>
+    );
+  return (
+    <div className="space-y-3 rounded-lg border border-border p-3">
+      <p className="text-xs text-fg-2">Your library stays on this computer in every case.</p>
+      <div className="space-y-2" role="radiogroup" aria-label="How to turn sync off">
+        {OFF_CHOICES.map((c) => (
+          <label key={c.mode} className="flex cursor-pointer items-start gap-2">
+            <input
+              type="radio"
+              name="sync-off"
+              className="mt-1 accent-accent"
+              checked={mode === c.mode}
+              onChange={() => setMode(c.mode)}
+            />
+            <span>
+              <span className={cn("block text-sm", c.mode === "erase" ? "text-danger" : "text-fg")}>
+                {c.title}
+              </span>
+              <span className="block text-xs text-fg-2">{c.detail}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <Button
+        size="sm"
+        variant={mode === "erase" ? "danger" : "secondary"}
+        disabled={pending}
+        onClick={() => {
+          if (
+            mode === "erase" &&
+            !confirm(
+              "Delete the synced library from the sync folder? Every computer stops syncing.",
+            )
+          )
+            return;
+          start(async () => {
+            const res = await disableSyncAction(mode);
+            if (!res.ok) return toast(res.error, { tone: "error" });
+            toast("Sync is off on this computer", { tone: "success" });
+            router.refresh();
+          });
+        }}
+      >
+        {pending && <Loader2 size={12} className="animate-spin" />} Turn off sync
+      </Button>
+    </div>
   );
 }

@@ -34,7 +34,7 @@ import { dismissDuplicate } from "./duplicates";
 import { enqueueOcr, ocrSave } from "./ocr";
 import { checkLink, checkLinksBatch, saveLinkCheckSettings } from "./linkcheck";
 import { backupSettingsSchema, saveBackupSettings, writeBackupFile } from "./backup";
-import { disableSync, enableSync, syncNow } from "./sync";
+import { changePassphrase, disableSync, enableSync, syncNow } from "./sync";
 import { archiveSave, archiveSettingsSchema, saveArchiveSettings } from "./archive";
 import { flushEmbeddings, pruneStaleEmbeddings, queueMissingEmbeddings } from "./embeddings";
 import { getDb, schema } from "./db";
@@ -597,9 +597,18 @@ export async function enableSyncAction(input: unknown) {
   });
 }
 
-export async function disableSyncAction() {
+export async function disableSyncAction(mode: unknown) {
   return run(async () => {
-    await disableSync();
+    await disableSync(z.enum(["keep", "remove", "erase"]).parse(mode ?? "keep"));
+    refresh();
+  });
+}
+
+export async function changeSyncPassphraseAction(input: unknown) {
+  return run(async () => {
+    await changePassphrase(
+      z.object({ current: z.string().max(500), next: z.string().max(500) }).parse(input),
+    );
     refresh();
   });
 }

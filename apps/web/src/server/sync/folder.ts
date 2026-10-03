@@ -86,6 +86,37 @@ export class SyncFolder {
     await writeAtomic(file, data);
   }
 
+  /** When a device last wrote a change (its newest log file), or null if never. */
+  async lastChange(device: string): Promise<number | null> {
+    const seqs = await this.logs(device);
+    const last = seqs.at(-1);
+    if (last === undefined) return null;
+    try {
+      return (await fs.stat(this.logPath(device, last))).mtimeMs;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Removes one device's change log (it left the library). */
+  async removeDevice(device: string) {
+    if (!DEVICE_RE.test(device)) throw new Error("Invalid device");
+    await fs.rm(path.join(this.root, "devices", device), { recursive: true, force: true });
+  }
+
+  /** Removes every device's log and every file copy, keeping the folder's config. */
+  async eraseData() {
+    await fs.rm(path.join(this.root, "devices"), { recursive: true, force: true });
+    await fs.rm(path.join(this.root, "blobs"), { recursive: true, force: true });
+  }
+
+  /** Removes the synced library from the folder. Only Tymo's own files are touched. */
+  async eraseAll() {
+    await this.eraseData();
+    await fs.rm(this.configPath(), { force: true });
+    await fs.rmdir(this.root).catch(() => {}); // only if nothing else is in it
+  }
+
   private blobPath(name: string) {
     if (!/^[a-f0-9]{64}$/.test(name)) throw new Error("Invalid blob name");
     return path.join(this.root, "blobs", `${name}.tsb`);

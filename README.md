@@ -136,6 +136,12 @@ and works offline; changes travel through a folder your cloud drive already sync
 - **Lost a computer?** Install Tymo on the new one, join with the same folder and passphrase,
   and the whole library (files included) is rebuilt from the folder.
 - Settings, API tokens, connected apps and AI keys stay per computer.
+- **Change the passphrase** any time (Settings → Sync): the folder is re-encrypted and your
+  other computers ask for the new one. **Turn off** just one computer, remove it from the
+  sync folder, or delete the synced library from the folder; every computer always keeps
+  its own library.
+- With iCloud Drive, wait until the **Tymo Sync** folder shows up on a second computer
+  before turning sync on there, so it joins instead of starting a library of its own.
 
 ## Keep your data safe
 
