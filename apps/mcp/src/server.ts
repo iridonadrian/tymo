@@ -1,8 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { TOOLS, type LibraryClient } from "@tymo/core/mcp-tools";
+import { MCP_INSTRUCTIONS, TOOLS, type LibraryClient } from "@tymo/core/mcp-tools";
 
 export function createServer(client: LibraryClient): McpServer {
-  const server = new McpServer({ name: "tymo", version: "0.1.0" });
+  const server = new McpServer(
+    { name: "tymo", version: "0.1.0" },
+    { instructions: MCP_INSTRUCTIONS },
+  );
   for (const t of TOOLS) {
     server.registerTool(
       t.name,
