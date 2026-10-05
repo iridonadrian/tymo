@@ -859,40 +859,47 @@ export function McpConnector({
   const https = url.startsWith("https://");
   return (
     <div className="space-y-4">
+      <ClaudeCodeConnect url={url} />
       <div>
-        <div className="eyebrow mb-1.5">Connector URL</div>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 overflow-x-auto rounded bg-bg px-2 py-1.5 font-mono text-xs whitespace-nowrap text-fg">
-            {url}
-          </code>
-          <Button
-            size="sm"
-            onClick={() => {
-              void navigator.clipboard.writeText(url);
-              toast("Connector URL copied");
-            }}
-          >
-            <Copy size={12} /> Copy
-          </Button>
-        </div>
+        <div className="eyebrow mb-1.5">claude.ai (web and phone)</div>
+        {!passwordSet || !https ? (
+          <p className="rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-xs leading-relaxed text-fg-2">
+            claude.ai connects from Anthropic&rsquo;s servers, so it can&rsquo;t reach a Tymo that
+            only runs on this computer ({url}). It needs Tymo reachable over HTTPS
+            {passwordSet ? "" : " with a password (TYMO_PASSWORD), so you can approve apps"}: see
+            &ldquo;Before exposing Tymo&rdquo; in the README. Claude Code on this computer works
+            right away with the button above.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <code className="flex-1 overflow-x-auto rounded bg-bg px-2 py-1.5 font-mono text-xs whitespace-nowrap text-fg">
+                {url}
+              </code>
+              <Button
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard.writeText(url);
+                  toast("Connector URL copied");
+                }}
+              >
+                <Copy size={12} /> Copy
+              </Button>
+            </div>
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-2">
+              <li>
+                In claude.ai open{" "}
+                <strong className="font-medium text-fg">Settings → Connectors</strong> and choose{" "}
+                <strong className="font-medium text-fg">Add custom connector</strong>.
+              </li>
+              <li>Name it “Tymo”, paste the URL above, and click Add, then Connect.</li>
+              <li>
+                Approve the request on the Tymo page that opens. Choose read-only if you prefer.
+              </li>
+            </ol>
+          </div>
+        )}
       </div>
-      {!passwordSet || !https ? (
-        <p className="rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-xs leading-relaxed text-fg-2">
-          To add Tymo to claude.ai, the server must be reachable over HTTPS
-          {passwordSet ? "" : " and have a password (TYMO_PASSWORD), so you can approve apps"}. See
-          “Before exposing Tymo” in the README. Until then, Claude Desktop and Claude Code can use
-          the local MCP server, or this URL with an API token from above.
-        </p>
-      ) : (
-        <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-2">
-          <li>
-            In claude.ai open <strong className="font-medium text-fg">Settings → Connectors</strong>{" "}
-            and choose <strong className="font-medium text-fg">Add custom connector</strong>.
-          </li>
-          <li>Name it “Tymo”, paste the URL above, and click Add, then Connect.</li>
-          <li>Approve the request on the Tymo page that opens. Choose read-only if you prefer.</li>
-        </ol>
-      )}
       <div>
         <div className="eyebrow mb-1.5">Connected apps</div>
         {apps.length === 0 ? (
@@ -1349,6 +1356,74 @@ function OffChooser({
       >
         {pending && <Loader2 size={12} className="animate-spin" />} Turn off sync
       </Button>
+    </div>
+  );
+}
+
+/**
+ * Claude Code runs on this computer, so it can use the local /mcp endpoint with an API
+ * token. One click creates the token and the exact command (removing any older entry first,
+ * which would otherwise shadow the new one).
+ */
+function ClaudeCodeConnect({ url }: { url: string }) {
+  const [command, setCommand] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const { toast } = useApp();
+  const router = useRouter();
+  return (
+    <div>
+      <div className="eyebrow mb-1.5">Claude Code (on this computer)</div>
+      {!command ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const res = await createTokenAction("Claude Code");
+                if (!res.ok) return toast(res.error, { tone: "error" });
+                const cmd =
+                  "claude mcp remove tymo -s local 2>/dev/null; claude mcp remove tymo -s user 2>/dev/null; " +
+                  `claude mcp add --scope user --transport http tymo ${url} --header "Authorization: Bearer ${res.data.token}"`;
+                setCommand(cmd);
+                void navigator.clipboard.writeText(cmd).then(
+                  () => toast("Command copied: paste it in Terminal"),
+                  () => {},
+                );
+                router.refresh();
+              })
+            }
+          >
+            {pending && <Loader2 size={12} className="animate-spin" />} Connect Claude Code
+          </Button>
+          <span className="text-xs text-fg-2">
+            Creates a token and copies the command to paste in Terminal.
+          </span>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-fg-2">
+            Paste this in Terminal (it&rsquo;s already copied), then run{" "}
+            <code className="font-mono">claude mcp list</code>: Tymo should show{" "}
+            <span className="text-fg">Connected</span>. Keep the Tymo app open while you use it. The
+            command contains your token, so don&rsquo;t share it.
+          </p>
+          <div className="flex items-start gap-2">
+            <code className="flex-1 overflow-x-auto rounded bg-bg px-2 py-1.5 font-mono text-xs break-all text-fg">
+              {command}
+            </code>
+            <Button
+              size="sm"
+              onClick={() => {
+                void navigator.clipboard.writeText(command);
+                toast("Command copied");
+              }}
+            >
+              <Copy size={12} /> Copy
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
