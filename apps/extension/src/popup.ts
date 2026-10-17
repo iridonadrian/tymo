@@ -135,8 +135,8 @@ async function init() {
     $<HTMLButtonElement>("save").disabled = true;
     $<HTMLButtonElement>("save-close").disabled = true;
   }
-  title.focus();
-  title.select();
+  // Ready for ⌘/Ctrl+Enter without highlighting the whole title.
+  $("save").focus({ preventScroll: true });
 
   const form = $<HTMLFormElement>("panel-save");
   form.onsubmit = (e) => {
