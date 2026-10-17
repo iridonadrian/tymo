@@ -11,7 +11,8 @@ export const config = {
   ),
   password: process.env.TYMO_PASSWORD || null,
   allowPrivateFetch: process.env.TYMO_UNSAFE_ALLOW_PRIVATE_FETCH === "1",
-  version: process.env.npm_package_version ?? "0.1.0",
+  // The desktop app passes its own version; other installs use the package version.
+  version: process.env.TYMO_VERSION || process.env.npm_package_version || "0.1.0",
 };
 
 export function dbUrl() {

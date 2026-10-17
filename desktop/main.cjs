@@ -122,6 +122,7 @@ async function startServer() {
       ELECTRON_RUN_AS_NODE: "1",
       TYMO_SERVER_ENTRY: path.join(serverRoot, "apps/web/server.js"),
       NODE_ENV: "production",
+      TYMO_VERSION: app.getVersion(),
       HOSTNAME: "127.0.0.1",
       PORT: String(port),
       TYMO_DATA_DIR: dataDir,

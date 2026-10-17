@@ -9,6 +9,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { collectionInput, createSaveInput, updateSaveInput } from "@tymo/core";
 import { MCP_INSTRUCTIONS, TOOLS, type LibraryClient } from "@tymo/core/mcp-tools";
+import { config } from "./config";
 import { createCollection, listCollections } from "./collections";
 import { enqueueEnrichment } from "./enrich";
 import { createSave, getSave, getSaveText, listSaves, relatedSaves, updateSave } from "./saves";
@@ -65,7 +66,7 @@ export const localLibrary: LibraryClient = {
 /** An MCP server exposing the library; read-only grants only see read-only tools. */
 export function createMcpServer(client: LibraryClient, opts: { canWrite: boolean }): McpServer {
   const server = new McpServer(
-    { name: "tymo", version: "0.1.0" },
+    { name: "tymo", version: config.version },
     {
       instructions: MCP_INSTRUCTIONS,
     },
