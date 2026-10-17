@@ -3,17 +3,19 @@ import { Inbox } from "lucide-react";
 import { libraryStats } from "@/server/saves";
 import { ListPage, type SearchParams } from "@/components/list-page";
 import { EmptyState } from "@/components/ui";
+import { InboxOrganizeButton } from "@/components/inbox-organize";
 
 export const metadata = { title: "Inbox" };
 
 export default async function InboxPage({ searchParams }: { searchParams: SearchParams }) {
-  const { snoozed } = await libraryStats();
+  const { snoozed, inbox } = await libraryStats();
   return (
     <ListPage
       searchParams={searchParams}
       base={{ view: "inbox" }}
       eyebrow="Unsorted"
       title="Inbox"
+      actions={inbox > 1 ? <InboxOrganizeButton /> : undefined}
       description={
         <>
           New saves land here. File them into a collection or press <kbd className="kbd">E</kbd> to

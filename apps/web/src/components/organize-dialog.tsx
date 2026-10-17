@@ -19,11 +19,17 @@ export function OrganizeDialog({
   open,
   onClose,
   aiEnabled,
+  scope = "bookmarks",
 }: {
   open: boolean;
   onClose: () => void;
   aiEnabled: boolean;
+  /** Bookmarks page, or the Inbox (items are filed into collections and leave the Inbox). */
+  scope?: "bookmarks" | "inbox";
 }) {
+  const inbox = scope === "inbox";
+  const noun = inbox ? "items" : "bookmarks";
+  const [markDone, setMarkDone] = useState(true);
   const router = useRouter();
   const { toast } = useApp();
   const [withTags, setWithTags] = useState(true);
@@ -45,7 +51,7 @@ export function OrganizeDialog({
 
   const plan = async () => {
     setBusy("plan");
-    const res = await planOrganizeAction({ tags: withTags });
+    const res = await planOrganizeAction({ tags: withTags, scope });
     setBusy(null);
     if (!res.ok) return toast(res.error, { tone: "error" });
     setFolders(res.data.folders.map((f, i) => ({ ...f, key: String(i), keep: true })));
@@ -58,6 +64,8 @@ export function OrganizeDialog({
     const chosen = folders.filter((f) => f.keep && f.name.trim());
     setBusy("apply");
     const res = await applyOrganizeAction({
+      scope,
+      markDone,
       folders: chosen.map((f) => ({
         name: f.name.trim(),
         emoji: f.emoji,
@@ -67,18 +75,23 @@ export function OrganizeDialog({
     });
     setBusy(null);
     if (!res.ok) return toast(res.error, { tone: "error" });
-    toast(`Organized ${res.data.moved} bookmarks into ${chosen.length} folders`, {
-      tone: "success",
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const u = await undoOrganizeAction();
-          if (!u.ok) return toast(u.error, { tone: "error" });
-          toast("Back to how it was", { tone: "success" });
-          router.refresh();
+    toast(
+      inbox && markDone
+        ? `Filed ${res.data.moved} items into ${chosen.length} collections · Inbox cleared`
+        : `Organized ${res.data.moved} ${noun} into ${chosen.length} ${inbox ? "collections" : "folders"}`,
+      {
+        tone: "success",
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const u = await undoOrganizeAction();
+            if (!u.ok) return toast(u.error, { tone: "error" });
+            toast("Back to how it was", { tone: "success" });
+            router.refresh();
+          },
         },
       },
-    });
+    );
     reset();
     onClose();
     router.refresh();
@@ -96,8 +109,10 @@ export function OrganizeDialog({
             <Sparkles size={14} className="text-accent" /> Organize with AI
           </h2>
           <p className="mt-1 text-xs text-fg-2">
-            The AI reads your bookmarks&rsquo; titles and sites and suggests folders. You review
-            them here; nothing changes until you click Apply, and you can undo it.
+            {inbox
+              ? "The AI reads what is in your Inbox and suggests a collection for each item (your existing ones first). "
+              : "The AI reads your bookmarks’ titles and sites and suggests folders. "}
+            You review them here; nothing changes until you click Apply, and you can undo it.
           </p>
         </div>
 
@@ -118,8 +133,19 @@ export function OrganizeDialog({
                 onChange={(e) => setWithTags(e.target.checked)}
                 className="accent-accent"
               />
-              Also add tags describing each site (e.g. fonts, free, ai)
+              Also add tags describing each {inbox ? "item" : "site"} (e.g. fonts, free, ai)
             </label>
+            {inbox && (
+              <label className="flex items-center gap-2 text-sm text-fg-2">
+                <input
+                  type="checkbox"
+                  checked={markDone}
+                  onChange={(e) => setMarkDone(e.target.checked)}
+                  className="accent-accent"
+                />
+                Take them out of the Inbox once filed
+              </label>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={close} disabled={!!busy}>
                 Cancel
@@ -130,7 +156,7 @@ export function OrganizeDialog({
                 ) : (
                   <Sparkles size={13} />
                 )}
-                {busy === "plan" ? "Thinking…" : "Suggest folders"}
+                {busy === "plan" ? "Thinking…" : inbox ? "Sort my Inbox" : "Suggest folders"}
               </Button>
             </div>
             {busy === "plan" && (
@@ -178,7 +204,8 @@ export function OrganizeDialog({
               ))}
             </div>
             <p className="text-2xs text-muted">
-              {total} bookmarks into {folders.filter((f) => f.keep).length} folders
+              {total} {noun} into {folders.filter((f) => f.keep).length}{" "}
+              {inbox ? "collections" : "folders"}
               {withTags && Object.keys(tags).length
                 ? `, with tags on ${Object.keys(tags).length}`
                 : ""}

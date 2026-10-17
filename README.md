@@ -174,7 +174,7 @@ pick the latest backup from your iCloud/Dropbox folder.
 
 **Organize**
 
-- **Inbox** — new saves land here. File them into a collection, mark done with <kbd>E</kbd>, or **snooze** them until tomorrow, the weekend or next week.
+- **Inbox** — new saves land here. File them into a collection, mark done with <kbd>E</kbd>, or **snooze** them until tomorrow, the weekend or next week. **Organize with AI** files everything in the Inbox into collections in one go (you review first; Undo puts it back).
 - **Collections** — manual, nested, or **smart** (rules like _domain contains github.com OR tag is open-source_) with a live preview.
 - **Tags** — lightweight, no taxonomy to maintain. Rename to merge.
 - **Right-click any link** — open, copy, move to a folder or collection, favorite, archive or delete. Works on several selected saves at once. Deleting needs no confirmation: <kbd>⌫</kbd> or Delete removes it, and **Undo** brings it back for a few seconds.

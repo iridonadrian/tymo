@@ -595,10 +595,12 @@ export async function saveBackupSettingsAction(input: unknown) {
 
 export async function planOrganizeAction(input: unknown) {
   return run(async () => {
-    const { tags } = z.object({ tags: z.boolean() }).parse(input);
+    const { tags, scope } = z
+      .object({ tags: z.boolean(), scope: z.enum(["bookmarks", "inbox"]).optional() })
+      .parse(input);
     if ((await getAiSettings()).provider === "none")
       throw new Error("Turn on AI first: Settings → AI.");
-    return planBookmarkOrganization({ tags });
+    return planBookmarkOrganization({ tags, scope });
   });
 }
 

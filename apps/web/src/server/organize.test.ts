@@ -5,9 +5,10 @@ import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetDbForTests } from "./db";
-import { addBookmarks, getSave, listBookmarks } from "./saves";
+import { addBookmarks, createSave, getSave, listBookmarks, listSaves } from "./saves";
 import { ensureCollectionPath, listCollections } from "./collections";
 import { saveAiSettings } from "./settings";
+import { updateSave } from "./saves";
 import {
   applyBookmarkOrganization,
   planBookmarkOrganization,
@@ -138,6 +139,34 @@ describe("organize bookmarks with AI", () => {
     expect(plan.folders).toHaveLength(1);
     expect(plan.folders[0]!.items).toHaveLength(130);
     expect(plan.tags).toEqual({});
+  });
+
+  it("sorts the Inbox: files items into collections, clears the Inbox, undoes", async () => {
+    const mine = (await ensureCollectionPath(["Reading"], new Map()))!;
+    const a = await createSave({ url: "https://www.figma.com/blog/x", title: "Figma design tips" });
+    const b = await createSave({ url: "https://github.com/x/y", title: "A GitHub repo" });
+    await createSave({ title: "Groceries", body: "milk, eggs" }, {});
+    // An inbox item that is already in a collection keeps it.
+    await updateSave(a.id, { collectionIds: [mine], status: "inbox" });
+    const inboxIds = async () => (await listSaves({ view: "inbox" })).items.map((s) => s.id).sort();
+    expect(await inboxIds()).toHaveLength(3);
+    const plan = await planBookmarkOrganization({ tags: false, scope: "inbox" });
+    expect(calls.at(-1)).toContain("Existing folders:");
+    expect(plan.unplaced.map((i) => i.title)).toEqual(["Groceries"]);
+    await applyBookmarkOrganization({
+      scope: "inbox",
+      folders: plan.folders.map((f) => ({ name: f.name, ids: f.items.map((i) => i.id) })),
+      tags: {},
+    });
+    expect((await getSave(a.id))!.collections.map((c) => c.name).sort()).toEqual([
+      "Design",
+      "Reading",
+    ]);
+    expect((await getSave(b.id))!.collections.map((c) => c.name)).toEqual(["Dev Tools"]);
+    expect(await inboxIds()).toHaveLength(1); // only the unplaced note is left
+    await undoBookmarkOrganization();
+    expect(await inboxIds()).toHaveLength(3);
+    expect((await getSave(b.id))!.collections).toEqual([]);
   });
 
   it("only touches bookmarks", async () => {
