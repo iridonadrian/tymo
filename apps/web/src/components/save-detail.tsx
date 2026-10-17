@@ -42,6 +42,7 @@ import {
   updateSaveAction,
 } from "@/server/actions";
 import { cn, formatBytes, fullDate, imageSrc, isTyping } from "@/lib/format";
+import { useUndoableDelete } from "./undo-delete";
 import { useApp } from "./app-context";
 import { Favicon } from "./favicon";
 import { TagInput } from "./tag-input";
@@ -60,6 +61,7 @@ type AiSuggestion = {
 
 export function SaveDetailSheet() {
   const { detailId, openSave, toast, collections, aiEnabled } = useApp();
+  const undoableDelete = useUndoableDelete();
   const router = useRouter();
   const [save, setSave] = useState<SaveDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -138,13 +140,16 @@ export function SaveDetailSheet() {
     kind: "archive" | "unarchive" | "delete" | "done" | "inbox" | "bookmark" | "unbookmark",
     message: string,
   ) => {
-    if (kind === "delete" && !confirm("Delete this save? This can't be undone.")) return;
+    if (kind === "delete") {
+      // Gone at once; the toast offers Undo for a few seconds.
+      openSave(null);
+      return undoableDelete([save!.id], `“${save!.title}”`);
+    }
     start(async () => {
       const res = await bulkAction([save!.id], { kind });
       if (!res.ok) return toast(res.error, { tone: "error" });
       toast(message, { tone: "success" });
-      if (kind === "delete") openSave(null);
-      else await load(save!.id);
+      await load(save!.id);
       router.refresh();
     });
   };

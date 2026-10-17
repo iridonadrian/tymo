@@ -4,7 +4,13 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookmarkMinus,
+  Check,
   ClipboardPaste,
+  Copy,
+  ExternalLink,
+  FolderInput,
+  MoreHorizontal,
+  Trash2,
   Columns2,
   Folder,
   Globe,
@@ -17,12 +23,19 @@ import {
 } from "lucide-react";
 import { parsePastedLinks, safeHref } from "@tymo/core";
 import type { BookmarkItem } from "@/server/saves";
-import { addBookmarksAction, bulkAction, markOpenedAction } from "@/server/actions";
+import {
+  addBookmarksAction,
+  bulkAction,
+  markOpenedAction,
+  updateSaveAction,
+} from "@/server/actions";
 import { cn } from "@/lib/format";
 import { useApp } from "./app-context";
 import { Favicon } from "./favicon";
 import { Button, Dialog, EmptyState } from "./ui";
 import { OrganizeDialog } from "./organize-dialog";
+import { useContextMenu, type MenuEntry } from "./context-menu";
+import { usePendingDeletes, useUndoableDelete } from "./undo-delete";
 
 type View = "list" | "columns";
 type Group = "folder" | "site" | "none";
@@ -61,7 +74,10 @@ const matches = (b: BookmarkItem, q: string) =>
  */
 export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiEnabled: boolean }) {
   const router = useRouter();
-  const { openSave, toast } = useApp();
+  const { openSave, toast, collections } = useApp();
+  const menu = useContextMenu();
+  const deleting = usePendingDeletes();
+  const undoableDelete = useUndoableDelete();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [q, setQ] = useState("");
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -85,7 +101,7 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
   };
 
   const groups = useMemo(() => {
-    const list = items.filter((b) => matches(b, q.trim()));
+    const list = items.filter((b) => !deleting.has(b.id) && matches(b, q.trim()));
     list.sort((a, b) =>
       prefs.sort === "used"
         ? b.openCount - a.openCount || (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0)
@@ -134,7 +150,7 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
     return [...map.values()].sort((a, b) =>
       a.key === "" ? 1 : b.key === "" ? -1 : a.name.localeCompare(b.name),
     );
-  }, [items, q, prefs.group, prefs.sort]);
+  }, [items, q, prefs.group, prefs.sort, deleting]);
 
   const first = groups[0]?.items[0];
   const open = (b: BookmarkItem) => void markOpenedAction(b.id);
@@ -145,6 +161,69 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
       toast(`Removed “${b.title}” from Bookmarks (still in your library)`);
       router.refresh();
     });
+  const moveTo = (b: BookmarkItem, folder: { id: string; name: string } | null) =>
+    start(async () => {
+      const res = await updateSaveAction(b.id, { collectionIds: folder ? [folder.id] : [] });
+      if (!res.ok) return toast(res.error, { tone: "error" });
+      toast(folder ? `Moved to ${folder.name}` : "Taken out of its folder", { tone: "success" });
+      router.refresh();
+    });
+  const copyLink = async (b: BookmarkItem) => {
+    try {
+      await navigator.clipboard.writeText(b.url);
+      toast("Link copied", { tone: "success" });
+    } catch {
+      toast("Couldn't copy the link", { tone: "error" });
+    }
+  };
+  const del = (b: BookmarkItem) => undoableDelete([b.id], `“${b.title}”`);
+
+  /** Right-click (or ⋯) menu for one bookmark. */
+  const entriesFor = (b: BookmarkItem): MenuEntry[] => {
+    const href = safeHref(b.url);
+    const folders = collections.filter((c) => !c.smart);
+    return [
+      {
+        label: "Open in new tab",
+        icon: <ExternalLink size={13} />,
+        onSelect: () => {
+          if (!href) return;
+          window.open(href, "_blank", "noopener,noreferrer");
+          open(b);
+        },
+      },
+      { label: "Copy link", icon: <Copy size={13} />, onSelect: () => void copyLink(b) },
+      { label: "Details and edit", icon: <PanelRight size={13} />, onSelect: () => openSave(b.id) },
+      "separator",
+      {
+        label: "Move to folder",
+        icon: <FolderInput size={13} />,
+        items: [
+          ...folders.map((c) => ({
+            label: `${c.icon ? `${c.icon} ` : ""}${c.name}`,
+            icon: b.folder?.id === c.id ? <Check size={13} /> : undefined,
+            onSelect: () => moveTo(b, c),
+          })),
+          ...(b.folder
+            ? [{ label: "No folder", icon: <X size={13} />, onSelect: () => moveTo(b, null) }]
+            : []),
+        ],
+      },
+      {
+        label: "Remove from Bookmarks",
+        icon: <BookmarkMinus size={13} />,
+        onSelect: () => remove(b),
+      },
+      "separator",
+      {
+        label: "Delete",
+        icon: <Trash2 size={13} />,
+        hint: "⌫",
+        danger: true,
+        onSelect: () => del(b),
+      },
+    ];
+  };
 
   return (
     <div>
@@ -273,6 +352,7 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
                   return (
                     <li
                       key={b.id}
+                      onContextMenu={menu.open(() => entriesFor(b))}
                       className={cn(
                         "group flex items-center border-b border-border/60 last:border-b-0 hover:bg-surface-2",
                         first?.id === b.id && q && "bg-accent-soft",
@@ -283,6 +363,14 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => open(b)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Delete" || e.key === "Backspace") {
+                            e.preventDefault();
+                            del(b);
+                          } else if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+                            menu.open(() => entriesFor(b))(e);
+                          }
+                        }}
                         className="flex h-9 min-w-0 flex-1 items-center gap-2.5 px-3 text-sm outline-none focus-visible:bg-surface-2"
                       >
                         <Favicon url={b.faviconUrl} domain={b.domain} size={16} />
@@ -312,6 +400,15 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
                         >
                           <BookmarkMinus size={13} />
                         </button>
+                        <button
+                          type="button"
+                          aria-label={`More for ${b.title}`}
+                          title="More (or right-click)"
+                          onClick={menu.open(() => entriesFor(b))}
+                          className="rounded p-1 text-muted hover:bg-surface-3 hover:text-fg"
+                        >
+                          <MoreHorizontal size={13} />
+                        </button>
                       </div>
                     </li>
                   );
@@ -322,6 +419,7 @@ export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiE
         </div>
       )}
 
+      {menu.element}
       <PasteLinksDialog open={pasteOpen} onClose={() => setPasteOpen(false)} />
       <OrganizeDialog
         open={organizeOpen}

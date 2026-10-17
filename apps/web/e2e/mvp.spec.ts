@@ -350,3 +350,45 @@ test("bookmarks: paste Safari links, grouped launcher, list or columns", async (
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("radio", { name: "List" })).toHaveAttribute("aria-checked", "true");
 });
+
+test("right-click a link: move it, delete it, undo, delete for good", async ({ page }) => {
+  const tag = Date.now();
+  await visit(page, "/bookmarks");
+  await page.getByRole("button", { name: "Paste links" }).click();
+  const dialog = page.locator("dialog[open]");
+  await dialog
+    .getByLabel("Links")
+    .fill(
+      `Keep ${tag} https://example.org/keep-${tag}\nGone ${tag} https://example.org/gone-${tag}`,
+    );
+  await dialog.getByLabel("Folder").selectOption("__new");
+  await dialog.getByLabel("New folder name").fill(`Menu ${tag}`);
+  await dialog.getByRole("button", { name: /Add 2 bookmarks/ }).click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+
+  const gone = page.getByRole("link", { name: new RegExp(`Gone ${tag}`) });
+  await gone.click({ button: "right" });
+  const menu = page.getByRole("menu");
+  await expect(menu.getByRole("menuitem", { name: "Copy link" })).toBeVisible();
+  await menu.getByRole("menuitem", { name: "Move to folder" }).click();
+  await expect(menu.getByRole("menuitem", { name: new RegExp(`Menu ${tag}`) })).toBeVisible();
+  await page.keyboard.press("Escape"); // back to the first page
+  await page.keyboard.press("Escape"); // closed
+  await expect(menu).toHaveCount(0);
+
+  // Delete with no "are you sure?", then undo.
+  await gone.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await expect(gone).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(gone).toBeVisible();
+
+  // Delete key on a focused link, and let the undo window pass.
+  await gone.focus();
+  await page.keyboard.press("Delete");
+  await expect(gone).toHaveCount(0);
+  await page.waitForTimeout(7000);
+  await page.reload();
+  await expect(page.getByRole("link", { name: new RegExp(`Keep ${tag}`) })).toBeVisible();
+  await expect(gone).toHaveCount(0);
+});

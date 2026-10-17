@@ -22,6 +22,7 @@ interface Props {
   onOpenDetail: () => void;
   onOpenLink: () => void;
   onToggleFavorite: () => void;
+  onContextMenu?: (e: React.MouseEvent | React.KeyboardEvent) => void;
 }
 
 export function openHref(save: Pick<SaveView, "url" | "fileId">) {
@@ -73,6 +74,7 @@ function SaveCardImpl({
   onOpenDetail,
   onOpenLink,
   onToggleFavorite,
+  onContextMenu,
 }: Props) {
   const href = openHref(save);
   const thumbSrc =
@@ -161,7 +163,9 @@ function SaveCardImpl({
       selectionActive || e.shiftKey || e.metaKey || e.ctrlKey ? onSelect(e) : onOpenDetail(),
     onKeyDown: (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && e.target === e.currentTarget) onOpenDetail();
+      if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) onContextMenu?.(e);
     },
+    onContextMenu,
   };
 
   if (mode === "dense") {

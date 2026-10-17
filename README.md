@@ -177,6 +177,7 @@ pick the latest backup from your iCloud/Dropbox folder.
 - **Inbox** — new saves land here. File them into a collection, mark done with <kbd>E</kbd>, or **snooze** them until tomorrow, the weekend or next week.
 - **Collections** — manual, nested, or **smart** (rules like _domain contains github.com OR tag is open-source_) with a live preview.
 - **Tags** — lightweight, no taxonomy to maintain. Rename to merge.
+- **Right-click any link** — open, copy, move to a folder or collection, favorite, archive or delete. Works on several selected saves at once. Deleting needs no confirmation: <kbd>⌫</kbd> or Delete removes it, and **Undo** brings it back for a few seconds.
 - **Serendipity** — resurface older saves one at a time and decide in a keystroke: keep, archive, favorite or snooze.
 - **Related & duplicates** — every save shows related saves; the Duplicates page merges links that redirect to the same page without losing tags, notes or history.
 

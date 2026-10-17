@@ -7,7 +7,11 @@ import {
   Archive,
   ArchiveRestore,
   Bookmark,
+  BookmarkMinus,
   Check,
+  Copy,
+  ExternalLink,
+  PanelRight,
   FolderPlus,
   Hash,
   Inbox,
@@ -32,6 +36,8 @@ import { useApp } from "./app-context";
 import { SaveCard, openHref, type ViewMode } from "./save-card";
 import { Button } from "./ui";
 import { SnoozeMenu } from "./snooze-menu";
+import { useContextMenu, type MenuEntry } from "./context-menu";
+import { isPendingDelete, useUndoableDelete } from "./undo-delete";
 import { snoozePresets } from "@/lib/snooze";
 
 type BulkKind = Parameters<typeof bulkAction>[1];
@@ -144,6 +150,7 @@ export function SaveList({
 }) {
   const router = useRouter();
   const { openSave, toast, collections, detailId, paletteOpen, quickSave } = useApp();
+  const undoableDelete = useUndoableDelete();
   const [mode, setMode] = useViewMode();
   const [items, setItems] = useState(initial.items);
   const [hasMore, setHasMore] = useState(initial.hasMore);
@@ -159,7 +166,7 @@ export function SaveList({
 
   // Server data changed (after a mutation + router.refresh): reset the list.
   useEffect(() => {
-    setItems(initial.items);
+    setItems(initial.items.filter((i) => !isPendingDelete(i.id)));
     setHasMore(initial.hasMore);
     setSelected((s) => new Set([...s].filter((id) => initial.items.some((i) => i.id === id))));
   }, [initial]);
@@ -189,6 +196,96 @@ export function SaveList({
   }, [loadMore]);
 
   const selectionActive = selected.size > 0;
+  const menu = useContextMenu();
+
+  /** Right-click menu: for the selection when the item is part of it, else for that item. */
+  const entriesFor = (s: SaveView): MenuEntry[] => {
+    const ids = selected.has(s.id) && selected.size > 1 ? [...selected] : [s.id];
+    const many = ids.length > 1;
+    const href = openHref(s);
+    const n = many ? ` (${ids.length})` : "";
+    const single: MenuEntry[] = many
+      ? []
+      : [
+          ...(href
+            ? [
+                {
+                  label: "Open link",
+                  icon: <ExternalLink size={13} />,
+                  onSelect: () => {
+                    window.open(href, "_blank", "noopener,noreferrer");
+                    openLink(s);
+                  },
+                },
+              ]
+            : []),
+          ...(s.url
+            ? [
+                {
+                  label: "Copy link",
+                  icon: <Copy size={13} />,
+                  onSelect: () =>
+                    navigator.clipboard.writeText(s.url!).then(
+                      () => toast("Link copied", { tone: "success" }),
+                      () => toast("Couldn't copy the link", { tone: "error" }),
+                    ),
+                },
+              ]
+            : []),
+          {
+            label: "Details and edit",
+            icon: <PanelRight size={13} />,
+            onSelect: () => openSave(s.id),
+          },
+          "separator" as const,
+        ];
+    const folders = collections.filter((c) => !c.smart);
+    return [
+      ...single,
+      {
+        label: (s.isFavorite ? "Remove from favorites" : "Add to favorites") + n,
+        icon: <Star size={13} />,
+        onSelect: () => act(s.isFavorite ? "unfavorite" : "favorite", ids),
+      },
+      {
+        label: (s.isBookmark ? "Remove from Bookmarks" : "Add to Bookmarks") + n,
+        icon: s.isBookmark ? <BookmarkMinus size={13} /> : <Bookmark size={13} />,
+        onSelect: () => act(s.isBookmark ? "unbookmark" : "bookmark", ids),
+      },
+      {
+        label: "Add to collection" + n,
+        icon: <FolderPlus size={13} />,
+        items: folders.map((c) => ({
+          label: `${c.icon ? `${c.icon} ` : ""}${c.name}`,
+          icon: !many && s.collections.some((x) => x.id === c.id) ? <Check size={13} /> : undefined,
+          onSelect: () =>
+            runBulk(ids, { kind: "addToCollection", collectionId: c.id }, `Added to ${c.name}`),
+        })),
+      },
+      ...(s.status === "inbox"
+        ? [
+            {
+              label: "Mark as done" + n,
+              icon: <Check size={13} />,
+              onSelect: () => act("done", ids),
+            },
+          ]
+        : []),
+      {
+        label: (s.isArchived ? "Restore from archive" : "Archive") + n,
+        icon: s.isArchived ? <ArchiveRestore size={13} /> : <Archive size={13} />,
+        onSelect: () => act(s.isArchived ? "unarchive" : "archive", ids),
+      },
+      "separator",
+      {
+        label: "Delete" + n,
+        icon: <Trash2 size={13} />,
+        hint: "⌫",
+        danger: true,
+        onSelect: () => act("delete", ids),
+      },
+    ];
+  };
   const listRef = useRef<HTMLDivElement>(null);
   const columns = useColumns(listRef, mode === "grid" && items.length > 0);
 
@@ -208,6 +305,10 @@ export function SaveList({
       }}
       onOpenLink={() => openLink(s)}
       onToggleFavorite={() => act(s.isFavorite ? "unfavorite" : "favorite", [s.id])}
+      onContextMenu={menu.open(() => {
+        setFocusIdx(idx);
+        return entriesFor(s);
+      })}
     />
   );
 
@@ -276,11 +377,15 @@ export function SaveList({
       ids: string[],
     ) => {
       if (!ids.length) return;
-      if (
-        kind === "delete" &&
-        !confirm(`Delete ${ids.length} save${ids.length > 1 ? "s" : ""}? This can't be undone.`)
-      )
+      if (kind === "delete") {
+        // No "are you sure?": it disappears now and the toast offers Undo for a few seconds.
+        if (ids.length > 50 && !confirm(`Delete ${ids.length} saves?`)) return;
+        setItems((cur) => cur.filter((s) => !ids.includes(s.id)));
+        setSelected(new Set());
+        const one = ids.length === 1 ? items.find((s) => s.id === ids[0]) : undefined;
+        undoableDelete(ids, one ? `“${one.title}”` : `${ids.length} saves`);
         return;
+      }
       const labels: Record<string, string> = {
         archive: "Archived",
         unarchive: "Restored from archive",
@@ -303,7 +408,7 @@ export function SaveList({
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [runBulk, params.view],
+    [runBulk, params.view, items, undoableDelete],
   );
 
   const openLink = useCallback((s: SaveView) => {
@@ -380,6 +485,7 @@ export function SaveList({
         }
         case "#":
         case "Delete":
+        case "Backspace":
           act("delete", target);
           break;
         case "Escape":
@@ -426,6 +532,7 @@ export function SaveList({
 
   return (
     <div>
+      {menu.element}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="eyebrow">
           {formatCount(initial.total)} {initial.total === 1 ? "item" : "items"}
