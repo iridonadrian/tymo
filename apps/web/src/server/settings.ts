@@ -17,6 +17,8 @@ export const aiSettingsSchema = z.object({
   embeddingBaseUrl: z.string().trim().max(500).default(""),
   /** Extract text from screenshots and images with the provider's vision model. */
   ocr: z.boolean().default(false),
+  /** Ollama: unload models after this many idle seconds to free memory (300 = Ollama's default). */
+  ollamaIdleSeconds: z.number().int().min(0).max(3600).default(60),
 });
 export type AiSettings = z.infer<typeof aiSettingsSchema>;
 
@@ -60,6 +62,7 @@ export async function getAiSettings(): Promise<AiSettings> {
     embeddingModel: env("TYMO_AI_EMBEDDING_MODEL") ?? s.embeddingModel,
     embeddingBaseUrl: env("TYMO_AI_EMBEDDING_BASE_URL") ?? s.embeddingBaseUrl,
     ocr: flag("TYMO_AI_OCR", s.ocr),
+    ollamaIdleSeconds: Number(env("TYMO_AI_IDLE_SECONDS") ?? s.ollamaIdleSeconds) || 0,
   };
 }
 

@@ -219,6 +219,7 @@ type AiPublic = {
   embeddingModel: string;
   embeddingBaseUrl: string;
   ocr: boolean;
+  ollamaIdleSeconds: number;
   apiKeyHint: string | null;
 };
 
@@ -265,6 +266,7 @@ export function AiSettingsForm({
       embeddingModel: next.embeddingModel,
       embeddingBaseUrl: next.embeddingBaseUrl,
       ocr: next.ocr,
+      ollamaIdleSeconds: next.ollamaIdleSeconds,
       apiKey: key || undefined,
     });
     if (!res.ok) return toast(res.error, { tone: "error" });
@@ -318,6 +320,8 @@ export function AiSettingsForm({
               onChange={setModel}
               onReady={useDownloaded}
               semanticSearch={s.semanticSearch}
+              idleSeconds={s.ollamaIdleSeconds}
+              onIdleChange={(ollamaIdleSeconds) => setS({ ...s, ollamaIdleSeconds })}
             />
           ) : (
             <HostedModelPicker

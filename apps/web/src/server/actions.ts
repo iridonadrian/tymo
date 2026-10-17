@@ -47,7 +47,7 @@ import { getDb, schema } from "./db";
 import { eq } from "drizzle-orm";
 import { SESSION_COOKIE, SESSION_TTL_MS, checkPassword, issueSessionCookie } from "./auth";
 import { rateLimit } from "./rate-limit";
-import { MODEL_NAME, cancelPull, ollamaStatus, startPull } from "./ollama";
+import { MODEL_NAME, cancelPull, ollamaStatus, startPull, unloadAll } from "./ollama";
 import { clientIp, publicErrorMessage } from "./privacy";
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string };
@@ -632,6 +632,10 @@ export async function ollamaPullAction(model: unknown) {
 
 export async function ollamaCancelPullAction() {
   return run(async () => cancelPull());
+}
+
+export async function ollamaFreeMemoryAction() {
+  return run(async () => unloadAll());
 }
 
 /* ------------------------------------------------------------------ sync */

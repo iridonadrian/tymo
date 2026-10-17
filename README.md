@@ -380,6 +380,11 @@ terminal is needed:
 
 Prefer the terminal? `ollama pull qwen2.5:14b`, then choose it in the same dropdown.
 
+Local models use a lot of memory while loaded (about 9 GB for the 14B model). Tymo unloads
+them 1 minute after the AI finishes (choose 10 seconds or 5 minutes under **Free memory**),
+and **Free memory now** unloads them straight away. They load again in a few seconds when
+needed.
+
 No key or URL is needed when Ollama runs on the same machine. With Docker, the default
 compose file already lets the container reach Ollama on the host: set the base URL to
 `http://host.docker.internal:11434/v1` (or `TYMO_AI_PROVIDER=ollama` and

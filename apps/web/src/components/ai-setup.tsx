@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Download, ExternalLink, Loader2, X } from "lucide-react";
-import { ollamaCancelPullAction, ollamaPullAction, ollamaStatusAction } from "@/server/actions";
+import {
+  ollamaCancelPullAction,
+  ollamaFreeMemoryAction,
+  ollamaPullAction,
+  ollamaStatusAction,
+} from "@/server/actions";
 import type { OllamaStatus } from "@/server/ollama";
 import { EMBEDDING_MODEL, HOSTED_MODELS, RECOMMENDED_MODELS, isInstalled } from "@/lib/ai-models";
 import { formatBytes } from "@/lib/format";
@@ -76,12 +81,16 @@ export function OllamaSetup({
   onChange,
   onReady,
   semanticSearch,
+  idleSeconds,
+  onIdleChange,
 }: {
   model: string;
   onChange: (model: string) => void;
   /** Called after a download finishes so the choice can be saved right away. */
   onReady: (model: string) => void;
   semanticSearch: boolean;
+  idleSeconds: number;
+  onIdleChange: (seconds: number) => void;
 }) {
   const { toast } = useApp();
   const [status, setStatus] = useState<OllamaStatus | null>(null);
@@ -227,6 +236,76 @@ export function OllamaSetup({
           </Button>
         </div>
       )}
+
+      <MemoryControls
+        loaded={status.loaded}
+        idleSeconds={idleSeconds}
+        onIdleChange={onIdleChange}
+        onFreed={() => void refresh()}
+      />
+    </div>
+  );
+}
+
+const IDLE_CHOICES = [
+  { value: 10, label: "10 seconds after the AI finishes" },
+  { value: 60, label: "1 minute after (recommended)" },
+  { value: 300, label: "5 minutes after (Ollama's default)" },
+];
+
+/** What Ollama holds in memory, when Tymo lets it go, and a button to free it now. */
+function MemoryControls({
+  loaded,
+  idleSeconds,
+  onIdleChange,
+  onFreed,
+}: {
+  loaded: OllamaStatus["loaded"];
+  idleSeconds: number;
+  onIdleChange: (seconds: number) => void;
+  onFreed: () => void;
+}) {
+  const { toast } = useApp();
+  const [freeing, setFreeing] = useState(false);
+  const total = loaded.reduce((n, m) => n + m.size, 0);
+  return (
+    <div className="space-y-2 rounded-lg border border-border p-3">
+      <label className="block">
+        <span className="eyebrow mb-1 block">Free memory</span>
+        <select
+          value={IDLE_CHOICES.some((c) => c.value === idleSeconds) ? idleSeconds : 60}
+          onChange={(e) => onIdleChange(Number(e.target.value))}
+          className="input h-8 py-0"
+        >
+          {IDLE_CHOICES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-fg-2">
+        <span>
+          {loaded.length
+            ? `In memory now: ${loaded.map((m) => m.name).join(", ")} · ${formatBytes(total)}`
+            : "Nothing in memory right now. The model loads again in a few seconds when needed."}
+        </span>
+        {loaded.length > 0 && (
+          <Button
+            disabled={freeing}
+            onClick={async () => {
+              setFreeing(true);
+              const res = await ollamaFreeMemoryAction();
+              setFreeing(false);
+              if (!res.ok) return toast(res.error, { tone: "error" });
+              toast("Memory freed", { tone: "success" });
+              onFreed();
+            }}
+          >
+            {freeing && <Loader2 size={13} className="animate-spin" />} Free memory now
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

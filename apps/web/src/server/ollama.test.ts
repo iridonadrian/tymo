@@ -3,15 +3,36 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { resetDbForTests } from "./db";
 import { saveAiSettings } from "./settings";
-import { cancelPull, ollamaStatus, startPull } from "./ollama";
+import { cancelPull, ollamaStatus, startPull, unloadAll } from "./ollama";
+import { noteOllamaUse, pendingUnload, unloadModel } from "./ollama-idle";
 import { isInstalled } from "../lib/ai-models";
 
 const installed = [{ name: "llama3.2:latest", size: 2000 }];
+let inMemory = [{ name: "llama3.2:latest", size: 3000 }];
+const unloaded: string[] = [];
 const server = http.createServer((req, res) => {
   if (req.url === "/api/tags") return res.end(JSON.stringify({ models: installed }));
+  if (req.url === "/api/ps") return res.end(JSON.stringify({ models: inMemory }));
+  if (req.url === "/api/generate" || req.url === "/api/embed") {
+    let body = "";
+    req.on("data", (c) => (body += c));
+    req.on("end", () => {
+      const { model, keep_alive } = JSON.parse(body) as { model: string; keep_alive: number };
+      if (req.url === "/api/generate" && model.includes("embed")) {
+        res.statusCode = 400;
+        return res.end("{}");
+      }
+      if (keep_alive === 0) {
+        unloaded.push(model);
+        inMemory = inMemory.filter((m) => m.name !== model);
+      }
+      res.end("{}");
+    });
+    return;
+  }
   if (req.url === "/api/pull") {
     let body = "";
     req.on("data", (c) => (body += c));
@@ -76,6 +97,35 @@ describe("one-click Ollama setup", () => {
     expect((await waitDone()).pull?.error).toBe("model not found");
     await expect(startPull("../etc; rm -rf")).rejects.toThrow(/valid model name/);
     cancelPull(); // nothing running: no-op
+  });
+
+  it("shows what is in memory and frees it on request", async () => {
+    expect((await ollamaStatus()).loaded).toEqual([{ name: "llama3.2:latest", size: 3000 }]);
+    expect(await unloadAll()).toBe(1);
+    expect((await ollamaStatus()).loaded).toEqual([]);
+    expect(unloaded).toContain("llama3.2:latest");
+  });
+
+  it("unloads models after the idle time, restarting the countdown on each use", async () => {
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
+    unloaded.length = 0;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      noteOllamaUse(base, "qwen2.5:14b", 10);
+      vi.advanceTimersByTime(8000);
+      noteOllamaUse(base, "nomic-embed-text", 10); // another request: wait again
+      vi.advanceTimersByTime(8000);
+      expect(pendingUnload(base).sort()).toEqual(["nomic-embed-text", "qwen2.5:14b"]);
+      vi.advanceTimersByTime(3000);
+      expect(pendingUnload(base)).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+    await vi.waitFor(() => expect(unloaded.sort()).toEqual(["nomic-embed-text", "qwen2.5:14b"]));
+    // Five minutes or more is Ollama's own default: nothing to schedule.
+    noteOllamaUse(base, "qwen2.5:14b", 300);
+    expect(pendingUnload(base)).toEqual([]);
+    expect(await unloadModel("http://127.0.0.1:9", "x")).toBe(false);
   });
 
   it("reports when Ollama isn't running", async () => {

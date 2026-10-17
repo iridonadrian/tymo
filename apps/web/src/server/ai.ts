@@ -11,6 +11,7 @@ import { z } from "zod";
 import { normalizeTag } from "@tymo/core";
 import { getDb, schema } from "./db";
 import { getAiSettings, type AiSettings } from "./settings";
+import { looksLikeOllama, noteOllamaUse } from "./ollama-idle";
 
 const TIMEOUT_MS = 45_000;
 /** Local models can be slow on a laptop, especially the first call that loads them. */
@@ -107,6 +108,7 @@ export async function complete(
       },
       timeout,
     );
+    if (ai.provider === "ollama") noteOllamaUse(oaBase, model, ai.ollamaIdleSeconds);
     const choices = data.choices as { message?: { content?: string } }[] | undefined;
     return choices?.[0]?.message?.content ?? "";
   }
@@ -208,6 +210,15 @@ export function embeddingConfig(ai: AiSettings): EmbeddingConfig | null {
   };
 }
 
+/** Starts the free-memory countdown when embeddings came from a local Ollama. */
+async function noteLocalEmbeddings(cfg: EmbeddingConfig) {
+  const ai = await getAiSettings().catch(() => null);
+  if (!ai) return;
+  const local =
+    looksLikeOllama(cfg.base) || (ai.provider === "ollama" && openAiBase(ai) === cfg.base);
+  if (local) noteOllamaUse(cfg.base, cfg.model, ai.ollamaIdleSeconds);
+}
+
 /** Embeds a batch of texts. Returns one vector per input, in order. */
 export async function embed(
   texts: string[],
@@ -229,6 +240,7 @@ export async function embed(
       .map((r) => r.v);
     if (out.length !== texts.length || out.some((v) => !Array.isArray(v) || !v.length))
       throw new Error("Embedding response did not match the request");
+    void noteLocalEmbeddings(cfg);
     return out as number[][];
   }
   const data = await postJson(

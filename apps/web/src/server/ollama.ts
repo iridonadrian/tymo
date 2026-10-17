@@ -6,6 +6,7 @@
 import { getAiSettings } from "./settings";
 import { OLLAMA_BASE } from "./ai";
 import { MODEL_NAME } from "../lib/ai-models";
+import { unloadModel } from "./ollama-idle";
 
 export { MODEL_NAME };
 
@@ -33,22 +34,31 @@ const g = globalThis as unknown as { __tymoPull?: { state: PullState; abort: Abo
 export interface OllamaStatus {
   running: boolean;
   models: { name: string; size: number }[];
+  /** Models in memory right now, with how much memory each takes. */
+  loaded: { name: string; size: number }[];
   pull: PullState | null;
 }
 
+const named = (list: { name?: unknown; size?: unknown }[] | undefined) =>
+  (list ?? [])
+    .filter((m): m is { name: string; size: number } => typeof m.name === "string")
+    .map((m) => ({ name: m.name, size: Number(m.size) || 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
 export async function ollamaStatus(): Promise<OllamaStatus> {
   const pull = g.__tymoPull?.state ?? null;
+  const off: OllamaStatus = { running: false, models: [], loaded: [], pull };
   try {
-    const res = await fetch(`${await root()}/api/tags`, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) return { running: false, models: [], pull };
-    const data = (await res.json()) as { models?: { name?: unknown; size?: unknown }[] };
-    const models = (data.models ?? [])
-      .filter((m): m is { name: string; size: number } => typeof m.name === "string")
-      .map((m) => ({ name: m.name, size: Number(m.size) || 0 }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    return { running: true, models, pull };
+    const base = await root();
+    const get = (path: string) =>
+      fetch(`${base}${path}`, { signal: AbortSignal.timeout(3000) }).then((r) =>
+        r.ok ? (r.json() as Promise<{ models?: { name?: unknown; size?: unknown }[] }>) : null,
+      );
+    const [tags, ps] = await Promise.all([get("/api/tags"), get("/api/ps").catch(() => null)]);
+    if (!tags) return off;
+    return { running: true, models: named(tags.models), loaded: named(ps?.models), pull };
   } catch {
-    return { running: false, models: [], pull };
+    return off;
   }
 }
 
@@ -120,6 +130,14 @@ export async function startPull(model: string): Promise<void> {
       state.done = true;
     }
   })();
+}
+
+/** Unloads every model Ollama holds in memory right now. */
+export async function unloadAll(): Promise<number> {
+  const { loaded } = await ollamaStatus();
+  const base = await root();
+  const done = await Promise.all(loaded.map((m) => unloadModel(base, m.name)));
+  return done.filter(Boolean).length;
 }
 
 export function cancelPull(): void {
