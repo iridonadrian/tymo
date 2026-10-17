@@ -67,6 +67,7 @@ export async function complete(
   user: string,
   s?: AiSettings,
   image?: AiImage,
+  opts: { maxTokens?: number } = {},
 ): Promise<string> {
   const ai = s ?? (await getAiSettings());
   if (ai.provider === "none") throw new Error("AI is disabled");
@@ -108,7 +109,7 @@ export async function complete(
       { "x-api-key": ai.apiKey, "anthropic-version": "2023-06-01" },
       {
         model,
-        max_tokens: image ? 4096 : 1024,
+        max_tokens: opts.maxTokens ?? (image ? 4096 : 1024),
         system,
         messages: [
           {

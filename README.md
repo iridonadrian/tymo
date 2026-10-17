@@ -400,6 +400,10 @@ What AI adds:
   photo shows and reads its text, so both become searchable.
 - **Search interpretation**: "Ask AI to interpret" rewrites a hard natural-language search
   into Tymo's query syntax (shown to you before it runs).
+- **Organize with AI** (Bookmarks page): the AI reads your bookmarks' titles and sites and
+  proposes folders, each with an emoji, plus optional tags. You rename or skip folders in the
+  preview, then Apply files everything at once, straight in the database, with no cursor,
+  clicking or assistant app involved. One click undoes it.
 
 Every AI setting can also be set with environment variables (see `.env.example`).
 

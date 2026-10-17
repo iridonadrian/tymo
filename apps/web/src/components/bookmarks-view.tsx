@@ -12,6 +12,7 @@ import {
   Loader2,
   PanelRight,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import { parsePastedLinks, safeHref } from "@tymo/core";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/format";
 import { useApp } from "./app-context";
 import { Favicon } from "./favicon";
 import { Button, Dialog, EmptyState } from "./ui";
+import { OrganizeDialog } from "./organize-dialog";
 
 type View = "list" | "columns";
 type Group = "folder" | "site" | "none";
@@ -57,12 +59,13 @@ const matches = (b: BookmarkItem, q: string) =>
  * Bookmarks: the sites you come back to, on one calm page instead of a row of open tabs.
  * A launcher: type to filter, Enter opens the first match, every link opens in a new tab.
  */
-export function BookmarksView({ items }: { items: BookmarkItem[] }) {
+export function BookmarksView({ items, aiEnabled }: { items: BookmarkItem[]; aiEnabled: boolean }) {
   const router = useRouter();
   const { openSave, toast } = useApp();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [q, setQ] = useState("");
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [organizeOpen, setOrganizeOpen] = useState(false);
   const [, start] = useTransition();
   const input = useRef<HTMLInputElement>(null);
 
@@ -232,6 +235,11 @@ export function BookmarksView({ items }: { items: BookmarkItem[] }) {
             </button>
           ))}
         </div>
+        {items.length > 1 && (
+          <Button onClick={() => setOrganizeOpen(true)}>
+            <Sparkles size={13} /> Organize with AI
+          </Button>
+        )}
         <Button onClick={() => setPasteOpen(true)}>
           <ClipboardPaste size={13} /> Paste links
         </Button>
@@ -315,6 +323,11 @@ export function BookmarksView({ items }: { items: BookmarkItem[] }) {
       )}
 
       <PasteLinksDialog open={pasteOpen} onClose={() => setPasteOpen(false)} />
+      <OrganizeDialog
+        open={organizeOpen}
+        onClose={() => setOrganizeOpen(false)}
+        aiEnabled={aiEnabled}
+      />
     </div>
   );
 }

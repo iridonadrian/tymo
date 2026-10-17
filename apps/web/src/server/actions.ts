@@ -35,6 +35,12 @@ import { enqueueOcr, ocrSave } from "./ocr";
 import { checkLink, checkLinksBatch, saveLinkCheckSettings } from "./linkcheck";
 import { backupSettingsSchema, saveBackupSettings, writeBackupFile } from "./backup";
 import { changePassphrase, disableSync, enableSync, syncNow } from "./sync";
+import {
+  applyBookmarkOrganization,
+  applyPlanInput,
+  planBookmarkOrganization,
+  undoBookmarkOrganization,
+} from "./organize";
 import { archiveSave, archiveSettingsSchema, saveArchiveSettings } from "./archive";
 import { flushEmbeddings, pruneStaleEmbeddings, queueMissingEmbeddings } from "./embeddings";
 import { getDb, schema } from "./db";
@@ -581,6 +587,33 @@ export async function saveBackupSettingsAction(input: unknown) {
   return run(async () => {
     await saveBackupSettings(backupSettingsSchema.partial().parse(input));
     refresh();
+  });
+}
+
+/* ------------------------------------------------------------- organize */
+
+export async function planOrganizeAction(input: unknown) {
+  return run(async () => {
+    const { tags } = z.object({ tags: z.boolean() }).parse(input);
+    if ((await getAiSettings()).provider === "none")
+      throw new Error("Turn on AI first: Settings → AI.");
+    return planBookmarkOrganization({ tags });
+  });
+}
+
+export async function applyOrganizeAction(input: unknown) {
+  return run(async () => {
+    const r = await applyBookmarkOrganization(applyPlanInput.parse(input));
+    refresh();
+    return r;
+  });
+}
+
+export async function undoOrganizeAction() {
+  return run(async () => {
+    const r = await undoBookmarkOrganization();
+    refresh();
+    return r;
   });
 }
 
