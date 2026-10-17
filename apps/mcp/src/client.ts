@@ -86,10 +86,13 @@ export class TymoClient implements LibraryClient {
   }
 
   collections() {
-    return this.request<{ collections: { id: string; name: string; icon: string | null }[] }>(
-      "GET",
-      "/collections",
-    );
+    return this.request<{
+      collections: { id: string; name: string; icon: string | null; parentId?: string | null }[];
+    }>("GET", "/collections");
+  }
+
+  createCollection(input: { name: string; icon?: string; parentId?: string | null }) {
+    return this.request<{ id: string }>("POST", "/collections", input);
   }
 
   tags() {

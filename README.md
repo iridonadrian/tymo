@@ -291,7 +291,9 @@ Restart Claude Desktop, then ask things like _"what did I save about Rust last m
 _"save this quote to Tymo"_. Tymo must be running.
 
 Tools: `search_library`, `get_save`, `related_saves`, `save_link`, `save_note`,
-`save_highlight`, `update_save`, `list_collections`, `list_tags`. There is no delete tool
+`save_highlight`, `update_save` (tags, favorites, Bookmarks page, add/remove/move between
+collections), `create_collection`, `list_collections`, `list_tags`. Ask, for example, _“sort my
+bookmarks into folders”_: Claude proposes groups, and creates and fills them once you agree. There is no delete tool
 (archiving is the most destructive action, and it is reversible). Saved page text is
 passed to the assistant fenced as untrusted content, so instructions hidden in a web page
 are treated as data. If Tymo runs on another machine, use `https://` in `TYMO_URL`: the

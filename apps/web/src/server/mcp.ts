@@ -7,9 +7,9 @@
 import { revalidatePath } from "next/cache";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { createSaveInput, updateSaveInput } from "@tymo/core";
+import { collectionInput, createSaveInput, updateSaveInput } from "@tymo/core";
 import { MCP_INSTRUCTIONS, TOOLS, type LibraryClient } from "@tymo/core/mcp-tools";
-import { listCollections } from "./collections";
+import { createCollection, listCollections } from "./collections";
 import { enqueueEnrichment } from "./enrich";
 import { createSave, getSave, getSaveText, listSaves, relatedSaves, updateSave } from "./saves";
 import { listTags } from "./tags";
@@ -49,8 +49,13 @@ export const localLibrary: LibraryClient = {
     return {
       collections: cols
         .filter((c) => !c.smart)
-        .map((c) => ({ id: c.id, name: c.name, icon: c.icon })),
+        .map((c) => ({ id: c.id, name: c.name, icon: c.icon, parentId: c.parentId })),
     };
+  },
+  async createCollection(input) {
+    const id = await createCollection(collectionInput.parse(input));
+    revalidatePath("/", "layout");
+    return { id };
   },
   async tags() {
     return { tags: (await listTags()).slice(0, 500).map((t) => t.name) };
