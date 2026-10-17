@@ -4,9 +4,50 @@ import { api, ext, getConfig, isSavableUrl, saveSession } from "./api";
 function flash(text: string, color: string, tabId?: number) {
   void ext.action.setBadgeBackgroundColor({ color, ...(tabId ? { tabId } : {}) });
   void ext.action.setBadgeText({ text, ...(tabId ? { tabId } : {}) });
-  setTimeout(() => void ext.action.setBadgeText({ text: "", ...(tabId ? { tabId } : {}) }), 2500);
+  setTimeout(() => {
+    void ext.action.setBadgeText({ text: "", ...(tabId ? { tabId } : {}) });
+    if (tabId !== undefined) void ext.tabs.get(tabId).then(markIfSaved, () => {});
+  }, 2500);
 }
-const ok = (tabId?: number) => flash("✓", "#6798ff", tabId);
+const ok = (tabId?: number) => flash("✓", "#16874a", tabId);
+
+/*
+ * A small ✓ on the toolbar icon when the page you are on is already in Tymo. One quick
+ * lookup to your own Tymo per page load; turn it off in the extension settings.
+ */
+const pendingChecks = new Map<number, ReturnType<typeof setTimeout>>();
+async function markIfSaved(tab: chrome.tabs.Tab | undefined) {
+  if (!tab?.id || !tab.active) return;
+  const tabId = tab.id;
+  clearTimeout(pendingChecks.get(tabId));
+  pendingChecks.set(
+    tabId,
+    setTimeout(async () => {
+      pendingChecks.delete(tabId);
+      try {
+        const { savedBadge } = (await ext.storage.local.get("savedBadge")) as {
+          savedBadge?: boolean;
+        };
+        if (savedBadge === false || !isSavableUrl(tab.url) || !(await getConfig())) return;
+        const r = await api<{ save: { id: string } | null }>(
+          `/api/v1/saves/lookup?url=${encodeURIComponent(tab.url!)}`,
+        );
+        void ext.action.setBadgeBackgroundColor({ color: "#4d4d55", tabId });
+        void ext.action.setBadgeText({ text: r.save ? "✓" : "", tabId });
+        void ext.action.setTitle({
+          title: r.save ? "Already in Tymo · open to see or update" : "Save to Tymo (Alt+Shift+S)",
+          tabId,
+        });
+      } catch {
+        // Tymo isn't running or is an older version: no badge.
+      }
+    }, 400),
+  );
+}
+ext.tabs.onActivated.addListener(({ tabId }) => void ext.tabs.get(tabId).then(markIfSaved));
+ext.tabs.onUpdated.addListener((_id, change, tab) => {
+  if (change.status === "complete") void markIfSaved(tab);
+});
 const fail = (tabId?: number, err?: unknown) => {
   console.warn("[tymo]", err);
   flash("!", "#ff7a7a", tabId);
@@ -81,6 +122,17 @@ function setupMenus() {
     });
     ext.contextMenus.create({ id: "save-image", title: "Save image to Tymo", contexts: ["image"] });
     ext.contextMenus.create({
+      id: "search-selection",
+      title: "Search Tymo for “%s”",
+      contexts: ["selection"],
+    });
+    ext.contextMenus.create({ id: "open-inbox", title: "Open Tymo Inbox", contexts: ["action"] });
+    ext.contextMenus.create({
+      id: "open-bookmarks",
+      title: "Open Tymo Bookmarks",
+      contexts: ["action"],
+    });
+    ext.contextMenus.create({
       id: "screenshot",
       title: "Save screenshot to Tymo",
       contexts: ["page"],
@@ -102,6 +154,20 @@ ext.contextMenus.onClicked.addListener(async (info, tab) => {
         return saveTab(tab, "extension-context-menu");
       case "screenshot":
         return screenshot(tab);
+      case "search-selection":
+      case "open-inbox":
+      case "open-bookmarks": {
+        const c = await getConfig();
+        if (!c) return;
+        const path =
+          info.menuItemId === "open-inbox"
+            ? "/inbox"
+            : info.menuItemId === "open-bookmarks"
+              ? "/bookmarks"
+              : `/saves?q=${encodeURIComponent((info.selectionText ?? "").slice(0, 200))}`;
+        await ext.tabs.create({ url: c.serverUrl + path });
+        return;
+      }
       case "save-link":
         if (!isSavableUrl(info.linkUrl)) return fail(tab?.id, "Unsupported link");
         await api("/api/v1/saves", {

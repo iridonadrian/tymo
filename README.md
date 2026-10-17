@@ -202,29 +202,37 @@ and add to your library. Runs fully local with Ollama. [More below](#ai-optional
 
 ## Browser extension
 
-Chromium (Chrome, Edge, Brave, Arc, Vivaldi) and Firefox, Manifest V3.
+Chromium (Chrome, Edge, Brave, Arc, Dia, Vivaldi) and Firefox, Manifest V3. It follows your
+browser's light or dark mode and looks like the app.
 
-```bash
-npm run build -w @tymo/extension     # → apps/extension/dist/chrome and dist/firefox
-```
+**Install:** download `Tymo-extension-chrome-….zip` (or `…-firefox-….zip`) from the
+[latest release](../../releases/latest) and unzip it.
 
-- **Chromium:** `chrome://extensions` → enable _Developer mode_ → _Load unpacked_ → `apps/extension/dist/chrome`
-- **Firefox:** `about:debugging#/runtime/this-firefox` → _Load Temporary Add-on_ → `apps/extension/dist/firefox/manifest.json`
+- **Chrome, Edge, Brave, Dia, Arc:** `chrome://extensions` → turn on _Developer mode_ → _Load
+  unpacked_ → pick the unzipped folder.
+- **Firefox:** `about:debugging#/runtime/this-firefox` → _Load Temporary Add-on_ → pick
+  `manifest.json` in the unzipped folder.
 
-Then in Tymo open **Settings → Browser extension**, create a token, and paste the server
-URL and token into the extension's settings page.
+Then in Tymo open **Settings → Browser extension**, create a token, and paste the address
+(`http://127.0.0.1:3210` for the desktop app) and token into the extension's settings page.
+From source: `npm run build -w @tymo/extension` → `apps/extension/dist/chrome` and `dist/firefox`.
 
-| Action                                          | How                                                                                          |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Quick save (edit title, collection, tags, note) | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> or the toolbar button                           |
-| Save current tab instantly                      | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>                                                 |
-| Save this window as a session                   | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>, or popup → _Session_ → then _Close saved tabs_ |
-| Restore a session                               | popup → _Restore_                                                                            |
-| Search your library                             | popup → _Find_ (same operators as the app)                                                   |
-| Save all tabs as bookmarks                      | popup → _Save tabs as bookmarks_ (tab groups become folders)                                 |
-| No extension (Safari, other browsers)           | Settings → copy the _Save to Tymo_ bookmarklet                                               |
-| Keep an offline copy when saving                | popup → _Keep an offline copy of this page_ (remembered)                                     |
-| Save link / selection / image / screenshot      | right-click menu                                                                             |
+| Action                                     | How                                                                                       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Quick save (title, collection, tags, note) | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> or the toolbar button                        |
+| See if a page is already saved             | a ✓ on the toolbar icon; the popup says when and where, with _Open_                       |
+| Favorite, bookmark or keep an offline copy | the chips under the note (bookmark and offline copy are remembered)                       |
+| Save and close the tab in one go           | popup → _Save & close tab_                                                                |
+| Save current tab instantly                 | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>                                              |
+| Save this window as a session              | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd>, or popup → _Tabs_ → then _Close saved tabs_ |
+| Close duplicate tabs                       | popup → _Tabs_ → _Close duplicates_                                                       |
+| Restore a session                          | popup → _Tabs_ → _Saved sessions_                                                         |
+| Open a bookmark                            | popup → _Find_ (your most-used bookmarks, one click)                                      |
+| Search your library                        | popup → _Find_ (same operators as the app)                                                |
+| Save all tabs as bookmarks                 | popup → _Tabs_ → _As bookmarks_ (tab groups become folders)                               |
+| Save link / selection / image / screenshot | right-click menu; also _Search Tymo for “…”_ on selected text                             |
+| Open the Inbox or Bookmarks                | the _Inbox_ count in the popup, or right-click the toolbar icon                           |
+| No extension (Safari, other browsers)      | Settings → copy the _Save to Tymo_ bookmarklet                                            |
 
 **Permissions:** `activeTab`, `tabs` (to read tab URLs for sessions), `storage`,
 `contextMenus`, `tabGroups` (Chromium). No content scripts and no access to the pages you

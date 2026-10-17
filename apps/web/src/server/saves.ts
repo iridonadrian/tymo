@@ -214,6 +214,7 @@ export async function insertSave(
         patch.isBookmark = true;
         patch.status = "active";
       }
+      if (input.favorite !== undefined) patch.isFavorite = input.favorite;
       await db.update(saves).set(patch).where(eq(saves.id, existing.id));
       await reindexSave(db, existing.id);
       return { id: existing.id, duplicate: true, needsEnrichment: false };

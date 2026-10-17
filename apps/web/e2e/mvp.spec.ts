@@ -145,6 +145,27 @@ test("MVP flow: collection → save → tag → search → organize → session"
   ).json();
   expect((await request.delete(`/api/v1/saves/${note.id}`, { headers: auth })).status()).toBe(200);
 
+  // Extension lookup: is this page saved, and where; plus the Inbox count.
+  const lookupUrl = "https://example.org/lookup-" + Date.now();
+  await request.post("/api/v1/saves", { headers: auth, data: { url: lookupUrl, favorite: true } });
+  const known = await (
+    await request.get(
+      `/api/v1/saves/lookup?url=${encodeURIComponent(lookupUrl + "?utm_source=x")}`,
+      {
+        headers: auth,
+      },
+    )
+  ).json();
+  expect(known.save).toMatchObject({ isFavorite: true });
+  expect(typeof known.inbox).toBe("number");
+  const miss = await (
+    await request.get("/api/v1/saves/lookup?url=https%3A%2F%2Fnot-saved.example%2F", {
+      headers: auth,
+    })
+  ).json();
+  expect(miss.save).toBeNull();
+  expect((await request.get("/api/v1/saves/lookup?url=x")).status()).toBe(401);
+
   await visit(page, "/sessions");
   await page.getByRole("link", { name: /Black Hat Europe Research/ }).click();
   await expect(page.getByRole("link", { name: "Talk A" })).toBeVisible();

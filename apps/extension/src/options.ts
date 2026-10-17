@@ -62,6 +62,10 @@ async function init() {
       show((err as Error).message, "err");
     }
   };
+  const badge = $<HTMLInputElement>("saved-badge");
+  const { savedBadge } = (await ext.storage.local.get("savedBadge")) as { savedBadge?: boolean };
+  badge.checked = savedBadge !== false;
+  badge.onchange = () => void ext.storage.local.set({ savedBadge: badge.checked });
   $("default-collection").onchange = () =>
     setConfig({
       defaultCollectionId: $<HTMLSelectElement>("default-collection").value || undefined,

@@ -5,55 +5,77 @@
     <title>Tymo extension settings</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="options-page">
     <main class="options">
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px">
-        <img src="icons/48.png" width="28" height="28" alt="" />
+      <div style="display: flex; align-items: center; gap: 12px">
+        <img src="icons/48.png" width="32" height="32" alt="" style="border-radius: 8px" />
         <div>
-          <div style="font-weight: 600; font-size: 16px">Tymo</div>
+          <div style="font-weight: 590; font-size: 17px; letter-spacing: -0.012em">Tymo</div>
           <div class="eyebrow">Extension settings</div>
         </div>
       </div>
+
       <form id="form" class="card">
+        <div class="eyebrow">Connection</div>
         <div class="field">
-          <label class="eyebrow" for="server">Server URL</label>
+          <label class="eyebrow" for="server">Tymo address</label>
           <input id="server" placeholder="http://127.0.0.1:3210" required />
+          <span class="hint">The desktop app and a local install use http://127.0.0.1:3210.</span>
         </div>
         <div class="field">
           <label class="eyebrow" for="token">API token</label>
           <input id="token" type="password" placeholder="tymo_…" autocomplete="off" required />
           <span class="hint"
-            >Create one in Tymo → Settings → Browser extension. Stored only in this browser's local
-            extension storage.</span
+            >Create one in Tymo → Settings → Browser extension. It stays in this browser only.</span
           >
         </div>
+        <div id="status" class="status hidden" role="status"></div>
+        <div class="actions">
+          <span class="hint">Tymo asks permission for this one address only.</span>
+          <span class="spacer"></span>
+          <button class="btn primary" type="submit">Save &amp; test connection</button>
+        </div>
+      </form>
+
+      <div class="card">
+        <div class="eyebrow">Behaviour</div>
         <div class="field">
           <label class="eyebrow" for="default-collection"
-            >Default collection for instant saves (Alt+Shift+D)</label
+            >Where instant saves go (Alt+Shift+D, right-click)</label
           >
           <select id="default-collection">
             <option value="">Inbox</option>
           </select>
         </div>
-        <div id="status" class="status hidden" role="status"></div>
-        <div class="actions">
-          <span class="hint">Tymo asks permission for this one site only.</span>
-          <button class="btn primary" type="submit">Save &amp; test connection</button>
-        </div>
-      </form>
-      <div class="card" style="margin-top: 16px">
+        <label class="check"
+          ><input type="checkbox" id="saved-badge" checked /> Show ✓ on the toolbar icon when the
+          page is already in Tymo</label
+        >
+      </div>
+
+      <div class="card">
         <div class="eyebrow">Shortcuts</div>
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 6px; color: var(--fg-2)">
-          <span>Open quick save</span><span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></span>
-          <span>Save current tab instantly</span
-          ><span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd></span>
-          <span>Save window as session</span
-          ><span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></span>
+        <div class="shortcuts">
+          <span>Open the Tymo popup</span><span><kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>S</kbd></span>
+          <span>Save the current tab instantly</span
+          ><span><kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>D</kbd></span>
+          <span>Save the window's tabs as a session</span
+          ><span><kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>E</kbd></span> <span>Save from the popup</span
+          ><span><kbd>⌘/Ctrl</kbd> <kbd>↵</kbd></span>
         </div>
         <span class="hint"
-          >Change them at chrome://extensions/shortcuts or about:addons → ⚙ → Manage Extension
-          Shortcuts.</span
+          >Change them at chrome://extensions/shortcuts, or in Firefox at about:addons → ⚙ → Manage
+          Extension Shortcuts.</span
         >
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Right-click menu</div>
+        <div class="muted" style="font-size: 12.5px">
+          Save a page, link, image, selection (as a quote) or screenshot · add a page or link to
+          Bookmarks · search Tymo for selected text. Right-click the toolbar icon to open your Inbox
+          or Bookmarks.
+        </div>
       </div>
     </main>
     <script src="options.js"></script>

@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CollectionView } from "@/server/collections";
 
 export interface ToastItem {
@@ -50,6 +58,16 @@ export function AppProvider({
     open: false,
   });
   const seq = useRef(0);
+
+  // A link ending in ?open=<id> (e.g. from the browser extension) opens that save's details.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("open");
+    if (!id || !/^[\w-]{1,64}$/.test(id)) return;
+    setDetailId(id);
+    url.searchParams.delete("open");
+    window.history.replaceState(null, "", url);
+  }, []);
 
   const dismissToast = useCallback(
     (id: number) => setToasts((t) => t.filter((x) => x.id !== id)),

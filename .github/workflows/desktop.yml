@@ -66,8 +66,41 @@ jobs:
             desktop/dist/*.AppImage
           if-no-files-found: error
 
+  # The browser extension as ready-to-load zips (Chrome/Edge/Brave/Dia/Arc and Firefox).
+  extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Version from tag
+        shell: bash
+        working-directory: apps/extension
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            npm pkg set "version=${TAG#v}"
+          fi
+      - run: npm run package -w @tymo/extension
+      - name: Name the zips
+        shell: bash
+        working-directory: apps/extension
+        run: |
+          mkdir -p out
+          for f in tymo-chrome-*.zip; do mv "$f" "out/Tymo-extension-chrome-${f#tymo-chrome-}"; done
+          for f in tymo-firefox-*.zip; do mv "$f" "out/Tymo-extension-firefox-${f#tymo-firefox-}"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tymo-extension
+          path: apps/extension/out/*.zip
+          if-no-files-found: error
+
   release:
-    needs: build
+    needs: [build, extension]
     if: github.ref_type == 'tag' || github.event.inputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
@@ -89,6 +122,9 @@ jobs:
             - **Mac with Intel chip:** `Tymo-…-mac-x64.dmg`
             - **Windows:** `Tymo-…-win-x64.exe`
             - **Linux:** `Tymo-…-linux-x86_64.AppImage`
+            - **Browser extension:** `Tymo-extension-chrome-….zip` (Chrome, Edge, Brave, Dia,
+              Arc) or `Tymo-extension-firefox-….zip`. Unzip it, open `chrome://extensions`, turn on
+              **Developer mode**, click **Load unpacked** and pick the unzipped folder.
 
             These builds aren't signed yet, so the first time you open Tymo:
 
