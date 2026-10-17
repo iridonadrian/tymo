@@ -70,12 +70,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+/* A fixed width: the browser sizes the popup window to fit it (no vw units here). */
 .popup {
   width: 392px;
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-html:has(.popup) {
+  min-width: 392px;
   overflow-x: hidden;
 }
 svg {
