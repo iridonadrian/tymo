@@ -52,6 +52,7 @@ Later additions:
 | Desktop app              | `desktop/` (Electron, own `package-lock.json`, not an npm workspace): `main.cjs` forks the standalone server via `server-entry.cjs`; `scripts/after-pack.cjs` copies it into resources; `.github/workflows/desktop.yml` builds dmg/exe/AppImage on tags or manual runs   |
 | Folder sync              | `server/sync/*`: triggers → `sync_outbox` → encrypted logs in `<folder>/devices/<id>/`; import with per-field HLC last-writer-wins, tombstones, natural-key merges (tag name, link, folder), pending parents; migration 0007; Settings → Sync; tests in `sync/*.test.ts` |
 | Organize with AI         | `server/organize.ts` (batched AI plan → folders/tags, apply, undo via setting `organize_undo`), `components/organize-dialog.tsx` on the Bookmarks page                                                                                                                   |
+| One-click local AI       | `server/ollama.ts` (status, background `/api/pull` with progress), `lib/ai-models.ts` (model lists), `components/ai-setup.tsx` (Settings → AI dropdowns)                                                                                                                 |
 
 New env vars (also in `.env.example` / `docker-compose.yml`): `TYMO_AI_SEMANTIC`, `TYMO_AI_EMBEDDING_MODEL`,
 `TYMO_AI_EMBEDDING_BASE_URL`, `TYMO_AI_OCR`, `TYMO_AUTO_ARCHIVE`, `TYMO_AUTO_BACKUP`, `TYMO_BACKUP_DIR`, `TYMO_LINK_CHECK`.

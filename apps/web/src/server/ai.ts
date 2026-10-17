@@ -30,7 +30,7 @@ function openAiBase(ai: Pick<AiSettings, "provider" | "baseUrl">): string | null
 export const DEFAULT_MODELS: Record<Exclude<AiSettings["provider"], "none">, string> = {
   openai: "gpt-4o-mini",
   ollama: "llama3.2",
-  anthropic: "claude-haiku-4-5",
+  anthropic: "claude-haiku-5-5",
   gemini: "gemini-2.5-flash",
 };
 
@@ -73,6 +73,13 @@ export async function complete(
   if (ai.provider === "none") throw new Error("AI is disabled");
   const model = ai.model || DEFAULT_MODELS[ai.provider];
   const base = ai.baseUrl.replace(/\/+$/, "");
+  // Long answers (organizing a whole library) need longer than a quick suggestion.
+  const timeout =
+    ai.provider === "ollama"
+      ? LOCAL_TIMEOUT_MS
+      : (opts.maxTokens ?? 0) > 4096
+        ? 120_000
+        : TIMEOUT_MS;
 
   const oaBase = openAiBase(ai);
   if (oaBase) {
@@ -98,7 +105,7 @@ export async function complete(
           },
         ],
       },
-      ai.provider === "ollama" ? LOCAL_TIMEOUT_MS : TIMEOUT_MS,
+      timeout,
     );
     const choices = data.choices as { message?: { content?: string } }[] | undefined;
     return choices?.[0]?.message?.content ?? "";
@@ -109,7 +116,8 @@ export async function complete(
       { "x-api-key": ai.apiKey, "anthropic-version": "2023-06-01" },
       {
         model,
-        max_tokens: opts.maxTokens ?? (image ? 4096 : 1024),
+        // Room for the model's own thinking, which counts towards this limit; only what is used is billed.
+        max_tokens: opts.maxTokens ?? 4096,
         system,
         messages: [
           {
@@ -126,6 +134,7 @@ export async function complete(
           },
         ],
       },
+      timeout,
     );
     const content = data.content as { type: string; text?: string }[] | undefined;
     return (content ?? [])
@@ -150,6 +159,7 @@ export async function complete(
         ? { temperature: 0 }
         : { temperature: 0.2, responseMimeType: "application/json" },
     },
+    timeout,
   );
   const cands = data.candidates as { content?: { parts?: { text?: string }[] } }[] | undefined;
   return cands?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";

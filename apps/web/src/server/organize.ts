@@ -110,7 +110,7 @@ export async function planBookmarkOrganization(opts: { tags: boolean }): Promise
       "</bookmarks>",
     ].join("\n");
     const reply = aiReply.parse(
-      extractJson(await complete(SYSTEM, user, undefined, undefined, { maxTokens: 8000 })),
+      extractJson(await complete(SYSTEM, user, undefined, undefined, { maxTokens: 16000 })),
     );
     for (const f of reply.folders) {
       const key = f.name.toLowerCase();

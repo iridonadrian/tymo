@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, Download, KeyRound, Loader2, Trash2, Upload } from "lucide-react";
 import {
@@ -26,6 +26,7 @@ import {
   syncNowAction,
 } from "@/server/actions";
 import { useApp } from "./app-context";
+import { HostedModelPicker, KeyLink, OllamaSetup } from "./ai-setup";
 import { Button, Time } from "./ui";
 import { cn, formatBytes } from "@/lib/format";
 import { applyAccent, applyTheme, type ThemePref } from "@/lib/theme";
@@ -249,40 +250,57 @@ export function AiSettingsForm({
       base: "http://127.0.0.1:11434/v1  (Docker: http://host.docker.internal:11434/v1)",
       model: "llama3.2  ·  for images: qwen2.5vl or llama3.2-vision",
     },
-    anthropic: { base: "https://api.anthropic.com", model: "claude-haiku-4-5" },
+    anthropic: { base: "https://api.anthropic.com", model: "claude-haiku-5-5" },
     gemini: { base: "https://generativelanguage.googleapis.com", model: "gemini-2.5-flash" },
     none: { base: "", model: "" },
   }[s.provider];
+
+  const save = async (next: AiPublic) => {
+    const res = await saveAiSettingsAction({
+      provider: next.provider,
+      baseUrl: next.baseUrl,
+      model: next.model,
+      autoSuggest: next.autoSuggest,
+      semanticSearch: next.semanticSearch,
+      embeddingModel: next.embeddingModel,
+      embeddingBaseUrl: next.embeddingBaseUrl,
+      ocr: next.ocr,
+      apiKey: key || undefined,
+    });
+    if (!res.ok) return toast(res.error, { tone: "error" });
+    setKey("");
+    toast("AI settings saved", { tone: "success" });
+    router.refresh();
+  };
+  const setModel = useCallback((model: string) => setS((cur) => ({ ...cur, model })), []);
+  // A finished Ollama download is saved straight away: one click from choice to working AI.
+  const latest = useRef({ s, save });
+  useEffect(() => {
+    latest.current = { s, save };
+  });
+  const useDownloaded = useCallback((model: string) => {
+    const next = { ...latest.current.s, provider: "ollama" as const, model };
+    setS(next);
+    void latest.current.save(next);
+  }, []);
 
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
-        start(async () => {
-          const res = await saveAiSettingsAction({
-            provider: s.provider,
-            baseUrl: s.baseUrl,
-            model: s.model,
-            autoSuggest: s.autoSuggest,
-            semanticSearch: s.semanticSearch,
-            embeddingModel: s.embeddingModel,
-            embeddingBaseUrl: s.embeddingBaseUrl,
-            ocr: s.ocr,
-            apiKey: key || undefined,
-          });
-          if (!res.ok) return toast(res.error, { tone: "error" });
-          setKey("");
-          toast("AI settings saved", { tone: "success" });
-          router.refresh();
-        });
+        start(() => save(s));
       }}
     >
       <label className="block">
         <span className="eyebrow mb-1 block">Provider</span>
         <select
           value={s.provider}
-          onChange={(e) => setS({ ...s, provider: e.target.value as AiPublic["provider"] })}
+          onChange={(e) => {
+            const provider = e.target.value as AiPublic["provider"];
+            // Each provider has its own model names: start from its default.
+            setS({ ...s, provider, model: provider === initial.provider ? initial.model : "" });
+          }}
           className="input h-8 py-0"
         >
           <option value="none">Disabled</option>
@@ -294,31 +312,20 @@ export function AiSettingsForm({
       </label>
       {s.provider !== "none" && (
         <>
-          <label className="block">
-            <span className="eyebrow mb-1 block">Base URL (optional)</span>
-            <input
-              value={s.baseUrl}
-              onChange={(e) => setS({ ...s, baseUrl: e.target.value })}
-              placeholder={placeholders.base}
-              className="input font-mono text-xs"
+          {s.provider === "ollama" ? (
+            <OllamaSetup
+              model={s.model}
+              onChange={setModel}
+              onReady={useDownloaded}
+              semanticSearch={s.semanticSearch}
             />
-          </label>
-          <label className="block">
-            <span className="eyebrow mb-1 block">Model</span>
-            <input
+          ) : (
+            <HostedModelPicker
+              key={s.provider}
+              provider={s.provider}
               value={s.model}
-              onChange={(e) => setS({ ...s, model: e.target.value })}
-              placeholder={placeholders.model}
-              className="input font-mono text-xs"
+              onChange={setModel}
             />
-          </label>
-          {s.provider === "ollama" && (
-            <p className="text-xs leading-relaxed text-muted">
-              Install Ollama from ollama.com, then run{" "}
-              <code className="font-mono text-fg-2">ollama pull llama3.2</code> (and{" "}
-              <code className="font-mono text-fg-2">ollama pull nomic-embed-text</code> for semantic
-              search). Everything stays on your machine; no key needed.
-            </p>
           )}
           {(s.provider !== "ollama" || s.apiKeyHint) && (
             <label className="block">
@@ -326,6 +333,11 @@ export function AiSettingsForm({
                 API key{" "}
                 {s.apiKeyHint && <span className="normal-case">(saved: {s.apiKeyHint})</span>}
               </span>
+              {!s.apiKeyHint && (
+                <span className="mb-1.5 block">
+                  <KeyLink provider={s.provider} />
+                </span>
+              )}
               <div className="flex gap-2">
                 <input
                   type="password"
@@ -350,6 +362,18 @@ export function AiSettingsForm({
               </div>
             </label>
           )}
+          <details className="text-xs text-muted">
+            <summary className="cursor-pointer select-none">Advanced: server address</summary>
+            <label className="mt-2 block">
+              <span className="eyebrow mb-1 block">Base URL (optional)</span>
+              <input
+                value={s.baseUrl}
+                onChange={(e) => setS({ ...s, baseUrl: e.target.value })}
+                placeholder={placeholders.base}
+                className="input font-mono text-xs"
+              />
+            </label>
+          </details>
           <label className="flex items-center gap-2 text-sm text-fg-2">
             <input
               type="checkbox"

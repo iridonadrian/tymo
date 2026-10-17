@@ -369,15 +369,16 @@ Report vulnerabilities privately via GitHub Security Advisories.
 Everything works without AI. Settings → AI turns on extras; nothing is sent anywhere until
 you pick a provider.
 
-**Fully local with Ollama (recommended for privacy)** — nothing leaves your computer:
+**Fully local with Ollama (recommended for privacy)**: nothing leaves your computer, and no
+terminal is needed:
 
-```bash
-# 1. Install Ollama (https://ollama.com), then pull the models:
-ollama pull llama3.2            # suggestions and "Ask AI to interpret" searches
-ollama pull nomic-embed-text    # semantic search, related saves, near-duplicates
-ollama pull qwen2.5vl           # optional: understanding images and screenshots
-# 2. Tymo → Settings → AI → Provider: Ollama → Save → Test connection
-```
+1. Install [Ollama](https://ollama.com/download) and open it once.
+2. Tymo → Settings → AI → Provider: **Ollama**. Tymo finds Ollama by itself.
+3. Pick a model from the dropdown (Qwen 2.5 14B is recommended for organizing; 7B on 8–16 GB
+   of memory) and click **Download and use**. Tymo shows the progress and saves the choice
+   when it finishes. With semantic search on, a second button downloads `nomic-embed-text`.
+
+Prefer the terminal? `ollama pull qwen2.5:14b`, then choose it in the same dropdown.
 
 No key or URL is needed when Ollama runs on the same machine. With Docker, the default
 compose file already lets the container reach Ollama on the host: set the base URL to
@@ -385,7 +386,8 @@ compose file already lets the container reach Ollama on the host: set the base U
 `TYMO_AI_BASE_URL=…` in `.env`). For image understanding, set the model to the vision one.
 
 **Hosted providers**: Anthropic (Claude), OpenAI, Google Gemini, or any OpenAI-compatible
-API (LM Studio, OpenRouter, vLLM…). Paste the API key in Settings; it is never shown again
+API (LM Studio, OpenRouter, vLLM…). Pick a model from the dropdown and paste the API key (each provider has a "Get a key" link);
+it is never shown again
 and is left out of backups.
 
 What AI adds:
