@@ -234,7 +234,16 @@ resolve its own domain to `127.0.0.1` and then talk to Tymo same-origin: read `/
 - Small dependency set; lockfile committed; `npm audit` in CI; Dependabot config.
   `npm audit` (including dev tooling) reports 0 vulnerabilities; drizzle-kit's bundled
   esbuild is pinned to a patched version through `overrides`.
-- No postinstall scripts of our own.
+- No postinstall scripts of our own, and dependencies' install scripts never run: `.npmrc`
+  sets `ignore-scripts`, and CI, Docker and the cloud setup use `npm ci --ignore-scripts`.
+  The desktop build runs Electron's (it downloads the binary) explicitly with
+  `npm rebuild electron`.
+- New releases are quarantined for 7 days: `min-release-age=7` in `.npmrc` (npm ≥ 11.10)
+  and a Dependabot `cooldown`. Security updates are not delayed. No git dependencies
+  (`allow-git=none`).
+- GitHub Actions are pinned to commit SHAs, checkouts don't keep the token, workflow
+  inputs reach shell scripts only through `env`, and release files carry signed build
+  provenance (`gh attestation verify`).
 
 ### Remote MCP connector (`/mcp`, `/oauth/*`, `server/oauth.ts`)
 

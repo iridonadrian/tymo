@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1.7
 # ---------- deps ----------
-FROM node:22-bookworm-slim AS deps
+FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
 COPY apps/extension/package.json apps/extension/
 COPY apps/mcp/package.json apps/mcp/
 COPY packages/core/package.json packages/core/
-RUN npm ci --no-audit --no-fund
+RUN npm ci --ignore-scripts --no-audit --no-fund
 
 # ---------- build ----------
 FROM deps AS build
@@ -16,7 +16,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -w @tymo/web
 
 # ---------- runtime ----------
-FROM node:22-bookworm-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
