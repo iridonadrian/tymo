@@ -21,7 +21,14 @@ updates:
     directory: /
     schedule: { interval: monthly }
     cooldown: { default-days: 7 }
+    groups:
+      # init and analyze must stay on the same version or the CodeQL job fails.
+      codeql: { patterns: ["github/codeql-action*"] }
   - package-ecosystem: docker
     directory: /
     schedule: { interval: monthly }
     cooldown: { default-days: 7 }
+    ignore:
+      # Stay on Node LTS lines (odd majors are short-lived); move to a new LTS by hand.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
