@@ -37,10 +37,14 @@ export function publicErrorMessage(err: unknown, fallback = "Something went wron
  * Client IP for rate limiting. X-Forwarded-For is trivially spoofable unless a reverse proxy
  * overwrites it, so it is only honoured with TYMO_TRUST_PROXY=1; otherwise all clients share
  * one bucket (safe: brute force stays capped, at worst logins are briefly throttled).
+ * The LAST entry is used: proxies append the address they saw, while everything before it
+ * comes from the client and could be a different made-up IP on every login attempt.
  */
 export function clientIp(headers: Headers): string {
   if (process.env.TYMO_TRUST_PROXY !== "1") return "direct";
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || "direct"
-  );
+  const forwarded = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return forwarded.at(-1) || headers.get("x-real-ip")?.trim() || "direct";
 }

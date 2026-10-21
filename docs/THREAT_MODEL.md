@@ -157,7 +157,8 @@ resolve its own domain to `127.0.0.1` and then talk to Tymo same-origin: read `/
 
 ### API abuse / brute force
 
-- In-memory token-bucket rate limiting on `/login` (5/min per client, see `TYMO_TRUST_PROXY`),
+- In-memory token-bucket rate limiting on `/login` (5/min per client; behind `TYMO_TRUST_PROXY` the client is the last,
+  proxy-added `X-Forwarded-For` entry, so a made-up header can't reset the limit),
   `/api/v1` (240/min/token), failed API tokens (20/min per client, then 429) and AI search
   interpretation (20/min).
 - Request body size limits on every endpoint.

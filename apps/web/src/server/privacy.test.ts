@@ -26,4 +26,14 @@ describe("privacy", () => {
     expect(clientIp(h)).toBe("1.2.3.4");
     delete process.env.TYMO_TRUST_PROXY;
   });
+
+  it("uses the address the proxy added, not one the client made up", () => {
+    process.env.TYMO_TRUST_PROXY = "1";
+    // A client sends a fake X-Forwarded-For; the proxy appends the real address.
+    const h = new Headers({ "x-forwarded-for": "6.6.6.6, 203.0.113.9" });
+    expect(clientIp(h)).toBe("203.0.113.9");
+    expect(clientIp(new Headers({ "x-forwarded-for": "198.51.100.1 , " }))).toBe("198.51.100.1");
+    expect(clientIp(new Headers({ "x-real-ip": "198.51.100.2" }))).toBe("198.51.100.2");
+    delete process.env.TYMO_TRUST_PROXY;
+  });
 });
