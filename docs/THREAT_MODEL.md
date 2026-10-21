@@ -224,8 +224,11 @@ resolve its own domain to `127.0.0.1` and then talk to Tymo same-origin: read `/
   Node integration and no preload. Other origins never load in the app window: links go
   to the default browser (only `http(s)`/`mailto`).
 - Update check: one HTTPS request a day to the GitHub releases API (can be turned off).
-  Downloads are accepted only over HTTPS from GitHub hosts and must match the size the
-  API reports; the user opens and installs them. Builds are unsigned (ad-hoc on macOS),
+  Downloads are accepted only over HTTPS from GitHub hosts (including after redirects),
+  must match the size the API reports (≤ 1 GB) and the SHA-256 `digest` GitHub records at
+  upload; a mismatch deletes the file. Releases without a digest are never downloaded by
+  the app (it opens the release page instead). The user opens and installs the file.
+  Builds are unsigned (ad-hoc on macOS),
   so authenticity rests on GitHub's TLS and account security. Signing and notarization
   are the upgrade path.
 

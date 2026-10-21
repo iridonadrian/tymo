@@ -16,7 +16,7 @@ server (`apps/web`, Next.js standalone build) with Electron's own Node, bound to
 - Updates: once a day (menu: Check for Updates Automatically) the app asks the GitHub
   releases API of the repository it was built from (`tymo.releases`, set by the release
   workflow) for the latest release, and offers to download the file for this OS/CPU
-  (https, GitHub hosts only, size-checked), open it and quit. Unsigned apps can't replace
+  (https, GitHub hosts only, size- and SHA-256-checked against GitHub's digest), open it and quit. Unsigned apps can't replace
   themselves, so the user finishes the install. Development builds never check.
 
 ## Build

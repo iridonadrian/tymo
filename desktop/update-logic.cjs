@@ -28,8 +28,20 @@ function pickAsset(assets, platform, arch) {
       ? `-mac-${arch === "arm64" ? "arm64" : "x64"}.dmg`
       : platform === "win32"
         ? "-win-x64.exe"
-        : ".AppImage";
+        : `-linux-${arch === "arm64" ? "arm64" : "x86_64"}.AppImage`;
   return assets.find((a) => typeof a?.name === "string" && a.name.endsWith(ending)) ?? null;
+}
+
+/** Largest installer we'll download; real ones are ~150 MB. */
+const MAX_DOWNLOAD_BYTES = 1024 * 1024 * 1024;
+
+/**
+ * The SHA-256 GitHub computed when the file was uploaded (`digest: "sha256:<hex>"`), or null.
+ * Without it the download can't be verified, so the app sends the user to the release page.
+ */
+function assetSha256(asset) {
+  const m = /^sha256:([0-9a-f]{64})$/i.exec(typeof asset?.digest === "string" ? asset.digest : "");
+  return m ? m[1].toLowerCase() : null;
 }
 
 function safeDownloadUrl(u) {
@@ -41,4 +53,4 @@ function safeDownloadUrl(u) {
   }
 }
 
-module.exports = { isNewer, pickAsset, safeDownloadUrl };
+module.exports = { isNewer, pickAsset, safeDownloadUrl, assetSha256, MAX_DOWNLOAD_BYTES };

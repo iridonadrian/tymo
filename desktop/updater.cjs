@@ -7,10 +7,17 @@
  * (`tymo.releases`); development builds have none and never check.
  */
 const { app, dialog, net, shell } = require("electron");
+const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { isNewer, pickAsset, safeDownloadUrl } = require("./update-logic.cjs");
+const {
+  isNewer,
+  pickAsset,
+  safeDownloadUrl,
+  assetSha256,
+  MAX_DOWNLOAD_BYTES,
+} = require("./update-logic.cjs");
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -52,8 +59,17 @@ async function latestRelease() {
   return {
     version: r.tag_name.replace(/^v/, ""),
     page: safeDownloadUrl(r.html_url)?.toString() ?? null,
-    asset: pickAsset(Array.isArray(r.assets) ? r.assets : [], process.platform, process.arch),
+    asset: verifiable(
+      pickAsset(Array.isArray(r.assets) ? r.assets : [], process.platform, process.arch),
+    ),
   };
+}
+
+/** Only files with a GitHub checksum and a sane size are downloaded; others go to the page. */
+function verifiable(asset) {
+  if (!asset || !assetSha256(asset) || !safeDownloadUrl(asset.browser_download_url)) return null;
+  const size = Number(asset.size);
+  return size > 0 && size <= MAX_DOWNLOAD_BYTES ? asset : null;
 }
 
 async function download(asset, win) {
@@ -61,25 +77,37 @@ async function download(asset, win) {
   if (!url) throw new Error("Unexpected download address");
   const name = path.basename(asset.name).replace(/[^\w.-]/g, "_");
   const target = path.join(app.getPath("downloads"), name);
+  const expected = assetSha256(asset);
+  const total = Number(asset.size);
+  if (!expected || !(total > 0 && total <= MAX_DOWNLOAD_BYTES))
+    throw new Error("This update can't be verified");
   const res = await net.fetch(url.toString(), { headers: { "User-Agent": "Tymo-Desktop" } });
   if (!res.ok || !res.body) throw new Error(`Download failed (${res.status})`);
-  const total = Number(asset.size) || Number(res.headers.get("content-length")) || 0;
+  // Redirects must also end on GitHub's own hosts.
+  if (res.url && !safeDownloadUrl(res.url)) throw new Error("Unexpected download address");
   const tmp = `${target}.part`;
-  const out = fs.createWriteStream(tmp);
+  const out = fs.createWriteStream(tmp, { mode: 0o600 });
+  const hash = createHash("sha256");
   let got = 0;
   try {
     for await (const chunk of res.body) {
       got += chunk.length;
+      if (got > total) throw new Error("The download is larger than expected");
+      hash.update(chunk);
       if (!out.write(chunk)) await new Promise((r) => out.once("drain", r));
-      if (total && win && !win.isDestroyed()) win.setProgressBar(got / total);
+      if (win && !win.isDestroyed()) win.setProgressBar(got / total);
     }
     await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
+    if (got !== total) throw new Error("The download was incomplete. Please try again.");
+    // Never open a file that isn't byte-for-byte what was published.
+    if (hash.digest("hex") !== expected)
+      throw new Error("The download didn't match the published checksum, so it was deleted.");
+  } catch (err) {
+    out.destroy();
+    fs.rmSync(tmp, { force: true });
+    throw err;
   } finally {
     if (win && !win.isDestroyed()) win.setProgressBar(-1);
-  }
-  if (asset.size && got !== Number(asset.size)) {
-    fs.rmSync(tmp, { force: true });
-    throw new Error("The download was incomplete. Please try again.");
   }
   fs.renameSync(tmp, target);
   if (process.platform === "linux") fs.chmodSync(target, 0o755);
