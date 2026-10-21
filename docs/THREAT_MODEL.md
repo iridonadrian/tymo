@@ -149,8 +149,10 @@ resolve its own domain to `127.0.0.1` and then talk to Tymo same-origin: read `/
 
 - Local mode: server binds `127.0.0.1` by default in the start scripts; no auth.
 - Self-hosted: `TYMO_PASSWORD` enables a middleware gate on every route except `/login`
-  and `/api/v1/*` (token-auth). Session cookie is an HMAC-SHA256 signed expiry; password
-  comparison is constant-time. The Docker entrypoint refuses to start with `0.0.0.0`
+  and `/api/v1/*` (token-auth). Session cookie is an HMAC-SHA256 signed expiry, keyed by a
+  random per-install secret (`DATA_DIR/session.key`, 0600, not in backups) mixed with the
+  password: a stolen cookie can't be used to guess the password offline, and changing the
+  password signs everyone out. Password comparison is constant-time. The Docker entrypoint refuses to start with `0.0.0.0`
   binding unless `TYMO_PASSWORD` is set or `TYMO_ALLOW_NO_AUTH=1` is explicit, and refuses
   passwords shorter than 8 characters when exposed (warns under 12).
 - API tokens: 32 random bytes, stored as SHA-256, revocable, `last_used_at` tracked.

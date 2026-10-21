@@ -1,3 +1,4 @@
+import { createHash, createHmac } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -205,6 +206,19 @@ describe("auth", () => {
     expect(checkPassword("hunter3")).toBe(false);
     process.env.TYMO_PASSWORD = "";
     expect(verifySessionCookie(c)).toBe(false);
+  });
+  it("session cookies can't be forged or tested offline from the password alone", () => {
+    process.env.TYMO_PASSWORD = "hunter2";
+    const exp = String(Date.now() + 60_000);
+    // The old scheme: HMAC keyed only by a hash of the password.
+    const key = createHash("sha256").update("tymo-session\0hunter2").digest();
+    const forged = `${exp}.${createHmac("sha256", key).update(exp).digest("base64url")}`;
+    expect(verifySessionCookie(forged)).toBe(false);
+    // Changing the password still signs everyone out.
+    const c = issueSessionCookie();
+    process.env.TYMO_PASSWORD = "hunter3";
+    expect(verifySessionCookie(c)).toBe(false);
+    process.env.TYMO_PASSWORD = "";
   });
 });
 
