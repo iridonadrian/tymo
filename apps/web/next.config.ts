@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@tymo/core"],
   serverExternalPackages: ["@libsql/client", "libsql"],
   poweredByHeader: false,
+  // Tymo never uses next/image (remote images go through the /img proxy), so the built-in
+  // optimizer (/_next/image, sharp/libvips) is switched off: it answers 404 and never
+  // decodes anything. That route also bypasses the password gate in src/proxy.ts.
+  images: { unoptimized: true },
   reactStrictMode: true,
   experimental: {
     serverActions: { bodySizeLimit: "26mb" },
