@@ -238,7 +238,10 @@ resolve its own domain to `127.0.0.1` and then talk to Tymo same-origin: read `/
 ### Dependencies and supply chain
 
 - Small dependency set; lockfile committed; `npm audit` in CI; Dependabot config.
-  `npm audit` (including dev tooling) reports 0 vulnerabilities; drizzle-kit's bundled
+  `npm audit --omit=dev` reports 0 vulnerabilities (CI fails on high). Dev tooling has one
+  accepted finding: `braces` (every version; DoS on deeply nested globs, reached only by
+  ESLint over our own files). Desktop build tooling: a `sprintf-js` DoS in
+  electron-builder's download logging, build-time only. drizzle-kit's bundled
   esbuild is pinned to a patched version through `overrides`.
 - No postinstall scripts of our own, and dependencies' install scripts never run: `.npmrc`
   sets `ignore-scripts`, and CI, Docker and the cloud setup use `npm ci --ignore-scripts`.
